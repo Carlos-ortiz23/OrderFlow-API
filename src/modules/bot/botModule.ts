@@ -1,0 +1,38 @@
+import { Router } from "express";
+import { BotController } from "./infrastructure/botController";
+import { ProcessMessageUseCase } from "./application/processMessageUseCase";
+import { TelegramProvider } from "./infrastructure/telegram/telegramProvider";
+import { OpenAIProvider } from "./infrastructure/openai/openAIProvider";
+import { SupabaseChatHistoryRepository } from "./infrastructure/database/supabaseChatHistoryRepository";
+import { webhookRateLimiter } from "../../middlewares/rateLimiter";
+import { ProductModule } from "../products/productModule";
+import { OrderModule } from "../orders/orderModule";
+
+// 1. Get repositories from products and orders modules
+const productRepo = ProductModule.repository;
+const createOrderUseCase = OrderModule.createOrderUseCase;
+
+// 2. Instantiate chat history repository (belongs to bot)
+const chatHistoryRepo = new SupabaseChatHistoryRepository();
+
+// 3. Instantiate external services
+const telegramProvider = new TelegramProvider();
+
+// 4. Instantiate the AI Agent (Injecting repositories for it to use as Tools)
+const aiAgent = new OpenAIProvider(productRepo, createOrderUseCase);
+
+// 5. Instantiate the Use Case (Injecting Telegram, the Agent and the History Repository)
+const useCase = new ProcessMessageUseCase(telegramProvider, aiAgent, chatHistoryRepo);
+
+// 6. Instantiate Controller and Routes
+const controller = new BotController(useCase);
+const router = Router();
+
+// Apply rate limiting to the webhook
+router.post("/webhook", webhookRateLimiter, controller.receiveWebhook);
+
+export class BotModule {
+  static get routes(): Router {
+    return router;
+  }
+}
