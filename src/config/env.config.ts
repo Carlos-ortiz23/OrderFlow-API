@@ -1,0 +1,71 @@
+import "dotenv/config";
+
+/**
+ * Centralized environment variables configuration
+ * Validates all required variables at application startup
+ */
+class EnvironmentConfig {
+  // Server
+  public readonly PORT: string;
+  public readonly NODE_ENV: string;
+
+  // Supabase
+  public readonly SUPABASE_URL: string;
+  public readonly SUPABASE_KEY: string;
+
+  // OpenAI
+  public readonly OPENAI_API_KEY: string;
+  public readonly OPENAI_MODEL: string;
+
+  // Telegram
+  public readonly TELEGRAM_BOT_TOKEN: string;
+
+  constructor() {
+    // Validate and assign environment variables
+    this.PORT = process.env.PORT || "3000";
+    this.NODE_ENV = process.env.NODE_ENV || "development";
+
+    // Required variables
+    this.SUPABASE_URL = this.getRequiredEnvVar("SUPABASE_URL");
+    this.SUPABASE_KEY = this.getRequiredEnvVar("SUPABASE_KEY");
+    this.OPENAI_API_KEY = this.getRequiredEnvVar("OPENAI_API_KEY");
+    this.OPENAI_MODEL = this.getRequiredEnvVar("OPENAI_MODEL");
+    this.TELEGRAM_BOT_TOKEN = this.getRequiredEnvVar("TELEGRAM_BOT_TOKEN");
+
+    // Log successful configuration (without exposing sensitive values)
+    console.log("✓ Environment configuration validated successfully");
+    console.log(`✓ Environment: ${this.NODE_ENV}`);
+    console.log(`✓ Port: ${this.PORT}`);
+  }
+
+  /**
+   * Gets a required environment variable or throws an error
+   */
+  private getRequiredEnvVar(key: string): string {
+    const value = process.env[key];
+    if (!value) {
+      throw new Error(
+        `Required environment variable not found: ${key}\n` +
+          `Please configure ${key} in your .env file`
+      );
+    }
+    return value;
+  }
+
+  /**
+   * Checks if we are in production
+   */
+  public isProduction(): boolean {
+    return this.NODE_ENV === "production";
+  }
+
+  /**
+   * Checks if we are in development
+   */
+  public isDevelopment(): boolean {
+    return this.NODE_ENV === "development";
+  }
+}
+
+// Export single instance (Singleton)
+export const envConfig = new EnvironmentConfig();
