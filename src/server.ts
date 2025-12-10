@@ -2,6 +2,8 @@ import "dotenv/config";
 import express, { Application } from "express";
 import cors from "cors";
 import helmet from "helmet";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.config";
 import { BotModule } from "./modules/bot/botModule";
 import { ProductModule } from "./modules/products/productModule";
 import { OrderModule } from "./modules/orders/orderModule";
@@ -44,6 +46,13 @@ class Server {
     // Favicon handler (to avoid 404 logs) response with code 204 (no content).
     this.app.get("/favicon.ico", (req, res) => res.status(204).end());
 
+    // API Documentation (Swagger)
+    this.app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: 'OrderFlow API Documentation',
+      customfavIcon: '/favicon.ico'
+    }));
+
     // Health Checks
     this.app.get("/health", HealthController.basic);
     this.app.get("/health/detailed", HealthController.detailed);
@@ -67,6 +76,7 @@ class Server {
       logger.info(` Server running on port ${this.port}`);
       logger.info(` Environment: ${this.nodeEnv}`);
       logger.info(` Health check: http://localhost:${this.port}/health`);
+      logger.info(` API Documentation: http://localhost:${this.port}/api/docs`);
     });
   }
 }

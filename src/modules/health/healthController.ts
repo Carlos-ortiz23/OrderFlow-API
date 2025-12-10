@@ -9,7 +9,24 @@ import axios from "axios";
  */
 export class HealthController {
   /**
-   * Basic health check 
+   * @swagger
+   * /health:
+   *   get:
+   *     summary: Basic health check
+   *     description: Returns basic API health status and environment information
+   *     tags: [Health]
+   *     responses:
+   *       200:
+   *         description: API is healthy and operational
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/HealthCheck'
+   *             example:
+   *               status: OK
+   *               service: OrderFlow API
+   *               timestamp: 2024-12-10T22:00:00.000Z
+   *               environment: development
    */
   static async basic(req: Request, res: Response): Promise<void> {
     res.status(200).json({
@@ -21,7 +38,43 @@ export class HealthController {
   }
 
   /**
-   * Detailed health check with verification of external services
+   * @swagger
+   * /health/detailed:
+   *   get:
+   *     summary: Detailed health check with external services verification
+   *     description: Checks the health of all external services (Supabase, LLM, Telegram) and returns detailed status
+   *     tags: [Health]
+   *     responses:
+   *       200:
+   *         description: All services are healthy
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/DetailedHealthCheck'
+   *             example:
+   *               status: OK
+   *               service: OrderFlow API
+   *               timestamp: 2024-12-10T22:00:00.000Z
+   *               environment: development
+   *               checks:
+   *                 api:
+   *                   status: OK
+   *                   message: API is running
+   *                 supabase:
+   *                   status: OK
+   *                   message: Supabase connection successful
+   *                 llm:
+   *                   status: OK
+   *                   message: LLM API accessible
+   *                 telegram:
+   *                   status: OK
+   *                   message: Telegram bot connected
+   *       503:
+   *         description: One or more services are degraded or unavailable
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/DetailedHealthCheck'
    */
   static async detailed(req: Request, res: Response): Promise<void> {
     const checks = {
