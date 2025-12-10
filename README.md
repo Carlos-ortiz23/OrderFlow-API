@@ -42,6 +42,8 @@ The system maintains conversation context, validates stock availability in real-
 - ✅ **Security**: Helmet, CORS, environment variables validation
 - ✅ **Retry Logic**: Automatic retries on external API calls
 - ✅ **Transactions**: Transaction handling with automatic rollback
+- ✅ **API Documentation**: Professional Swagger/OpenAPI documentation
+- ✅ **Privacy & Security**: Bot follows strict data protection principles
 
 ## Prerequisites
 
@@ -104,7 +106,20 @@ npm run build
 npm start
 ```
 
-## 📡 Endpoints
+##  API Documentation
+
+Complete interactive API documentation is available via Swagger UI:
+
+**Access:** `http://localhost:3000/api/docs`
+
+The documentation includes:
+- All available endpoints with descriptions
+- Request/response schemas and examples
+- Authentication requirements (future)
+- Error responses and status codes
+- Interactive testing interface
+
+##  Endpoints
 
 ### Health Checks
 
@@ -141,6 +156,9 @@ Webhook to receive Telegram messages
 - Rate limit: 30 requests/minute per IP
 - Automatic data validation
 - Asynchronous processing
+- Ignores Telegram commands (e.g., /start, /help)
+
+**Note:** For complete endpoint documentation, visit `/api/docs`
 
 ## 🏗️ Architecture
 
@@ -148,6 +166,7 @@ Webhook to receive Telegram messages
 src/
 ├── config/                 # Centralized configuration
 │   ├── env.config.ts      # Environment variables validation
+│   ├── swagger.config.ts  # Swagger/OpenAPI configuration
 │   └── supabase.ts        # Supabase client
 ├── middlewares/           # Express middlewares
 │   ├── errorHandler.ts    # Global error handling
@@ -181,12 +200,20 @@ src/
 
 ## 🔒 Security
 
+### Infrastructure Security
 - ✅ Validation of all environment variables at startup
 - ✅ Helmet for security headers
 - ✅ CORS configured
 - ✅ Rate limiting per IP
 - ✅ Input validation with DTOs
 - ✅ No exposure of internal errors in production
+
+### Bot Security & Privacy
+- ✅ **Never requests sensitive information** (credit cards, passwords, IDs)
+- ✅ **Maintains customer confidentiality** - No sharing of order details
+- ✅ **Minimal data collection** - Only processes necessary purchase information
+- ✅ **Secure transactions** - Server-side validation and calculation
+- ✅ **Professional communication** - Formal, clear, and trustworthy responses
 
 ## 📊 Logging
 

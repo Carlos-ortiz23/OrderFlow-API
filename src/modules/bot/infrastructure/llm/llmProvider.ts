@@ -78,16 +78,57 @@ export class LLMProvider {
     if (!userMessage || userMessage.trim().length === 0) {
       return "Please send a valid message.";
     }
+
+    // Detect if this is the first interaction or first of the day
+    const isFirstInteraction = history.length === 0;
+    const isFirstToday = this.isFirstInteractionToday(history);
+    const customerName = this.extractCustomerName(history);
+
+    // Build personalized system prompt
+    let systemPrompt = `You are a professional virtual sales assistant for our store.
+
+SECURITY AND PRIVACY PRINCIPLES:
+- NEVER request sensitive personal information (credit card numbers, passwords, ID documents, social security numbers)
+- NEVER share information about other customers or their orders
+- Maintain strict confidentiality of all order details
+- Only process information necessary for the purchase (product names and quantities)
+- If asked for sensitive data, politely decline and explain we don't collect such information
+
+COMMUNICATION GUIDELINES:
+1. Be professional, formal, and concise in all responses
+2. Use clear, direct language without excessive emojis or informal expressions
+3. Maintain a courteous and respectful tone at all times
+4. Confirm each action before executing it
+5. Keep responses brief and to the point
+
+BUSINESS RULES:
+1. NEVER invent or assume product availability. Always use 'search_products' to verify stock and pricing
+2. If a product is not found, politely inform the customer it's currently unavailable
+3. Before finalizing any order, confirm the total amount and ask: "Would you like to proceed with this purchase?"
+4. Only call 'finalize_order' when the customer explicitly confirms ("yes", "confirm", "proceed", "that's all")
+5. Always present prices clearly with currency symbol
+
+RESPONSE FORMAT:
+- Product information: "Product: [name] - Price: $[amount] - Available stock: [quantity] units"
+- Order totals: "Order total: $[amount]"
+- Confirmations: "Order confirmed. Order ID: [id]. Total: $[amount]. Thank you for your purchase."`;
+
+    // Add personalized greeting for first interaction
+    if (isFirstInteraction) {
+      systemPrompt += `\n\nIMPORTANT: This is the customer's first interaction. Greet them with:
+"Welcome to our store. I'm your virtual sales assistant. I'm here to help you find products and process your order securely and efficiently. How may I assist you today?"`;
+    } else if (isFirstToday && customerName) {
+      systemPrompt += `\n\nIMPORTANT: This is the first interaction of the day with returning customer ${customerName}. Greet them with:
+"Good day, ${customerName}. Welcome back. How may I assist you today?"`;
+    } else if (isFirstToday) {
+      systemPrompt += `\n\nIMPORTANT: This is the first interaction of the day with this customer. Greet them professionally and ask how you can help.`;
+    }
+
     // 1. Prepare the system context
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
         role: "system",
-        content: `You are an expert virtual salesperson for a store.
-                GOLDEN RULES:
-                1. DO NOT invent products. Use 'search_products' to see what's available and its price.
-                2. If you don't find a product, kindly tell the customer it's not available.
-                3. Before purchasing, confirm the total with the user or ask "Do you want anything else?".
-                4. Only call 'finalize_order' when the customer says "ready", "that's all" or "confirm".`,
+        content: systemPrompt,
       },
       ...history.map(msg => ({
         role: msg.role,
@@ -187,6 +228,40 @@ export class LLMProvider {
     }
 
     // Return the final response in natural language
-    return msg.content || "Sorry, I had a technical error.";
+    return msg.content || "I apologize, but I encountered a technical error. Please try again.";
+  }
+
+  /**
+   * Checks if this is the first interaction of the day
+   */
+  private isFirstInteractionToday(history: ChatMessage[]): boolean {
+    if (history.length === 0) return true;
+    
+    const lastMessage = history[history.length - 1];
+    if (!lastMessage.created_at) return false;
+    
+    const lastDate = new Date(lastMessage.created_at);
+    const today = new Date();
+    
+    // Compare dates (ignoring time)
+    return lastDate.toDateString() !== today.toDateString();
+  }
+
+  /**
+   * Extracts customer name from chat history if available
+   */
+  private extractCustomerName(history: ChatMessage[]): string | null {
+    // Look for assistant messages that might contain a name greeting
+    // This is a simple implementation - could be enhanced with more sophisticated name extraction
+    for (const msg of history) {
+      if (msg.role === 'user' && msg.content) {
+        // Simple heuristic: if user introduces themselves
+        const nameMatch = msg.content.match(/(?:my name is|i'm|i am)\s+([A-Z][a-z]+)/i);
+        if (nameMatch) {
+          return nameMatch[1];
+        }
+      }
+    }
+    return null;
   }
 }
