@@ -14,9 +14,9 @@ class EnvironmentConfig {
   public readonly SUPABASE_KEY: string;
 
   // OpenAI
-  public readonly OPENAI_API_KEY: string;
-  public readonly OPENAI_MODEL: string;
-
+  public readonly LLM_API_KEY: string;
+  public readonly LLM_MODEL: string;
+  public readonly LLM_URL: string;
   // Telegram
   public readonly TELEGRAM_BOT_TOKEN: string;
 
@@ -28,8 +28,9 @@ class EnvironmentConfig {
     // Required variables
     this.SUPABASE_URL = this.getRequiredEnvVar("SUPABASE_URL");
     this.SUPABASE_KEY = this.getRequiredEnvVar("SUPABASE_KEY");
-    this.OPENAI_API_KEY = this.getRequiredEnvVar("OPENAI_API_KEY");
-    this.OPENAI_MODEL = this.getRequiredEnvVar("OPENAI_MODEL");
+    this.LLM_API_KEY = this.getRequiredEnvVar("LLM_API_KEY");
+    this.LLM_MODEL = this.getRequiredEnvVar("LLM_MODEL");
+    this.LLM_URL = this.getRequiredEnvVar("LLM_URL");
     this.TELEGRAM_BOT_TOKEN = this.getRequiredEnvVar("TELEGRAM_BOT_TOKEN");
 
     // Log successful configuration (without exposing sensitive values)

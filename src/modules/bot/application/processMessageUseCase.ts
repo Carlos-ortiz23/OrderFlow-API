@@ -1,4 +1,4 @@
-import { OpenAIProvider } from "../infrastructure/openai/openAIProvider";
+import { LLMProvider } from "../infrastructure/llm/llmProvider";
 import { MessagingProvider } from "../domain/messagingProviderInterface";
 import { ChatHistoryRepository } from "../domain/chatHistoryRepositoryInterface";
 import { logger } from "../../../utils/logger";
@@ -6,7 +6,7 @@ import { logger } from "../../../utils/logger";
 export class ProcessMessageUseCase {
   constructor(
     private readonly messagingProvider: MessagingProvider,
-    private readonly aiAgent: OpenAIProvider,
+    private readonly aiAgent: LLMProvider,
     private readonly chatHistoryRepo: ChatHistoryRepository
   ) {}
 

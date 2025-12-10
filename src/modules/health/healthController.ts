@@ -27,7 +27,7 @@ export class HealthController {
     const checks = {
       api: { status: "OK", message: "API is running" },
       supabase: await HealthController.checkSupabase(),
-      openai: await HealthController.checkOpenAI(),
+      openai: await HealthController.checkLLM(),
       telegram: await HealthController.checkTelegram(),
     };
 
@@ -74,23 +74,23 @@ export class HealthController {
   }
 
   /**
-   * Verify the connection with OpenAI
+   * Verify the connection with LLM
    */
-  private static async checkOpenAI(): Promise<{
+  private static async checkLLM(): Promise<{
     status: string;
     message: string;
   }> {
     try {
-      const openai = new OpenAI({ apiKey: envConfig.OPENAI_API_KEY });
+      const llm = new OpenAI({ apiKey: envConfig.LLM_API_KEY });
 
       // Make a simple call to verify the API key
-      await openai.models.list();
+      await llm.models.list();
 
-      return { status: "OK", message: "OpenAI API accessible" };
+      return { status: "OK", message: "LLM API accessible" };
     } catch (error: any) {
       return {
         status: "ERROR",
-        message: `OpenAI error: ${error.message}`,
+        message: `LLM error: ${error.message}`,
       };
     }
   }

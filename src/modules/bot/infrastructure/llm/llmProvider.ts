@@ -56,16 +56,16 @@ const TOOLS = [
   },
 ];
 
-export class OpenAIProvider {
-  private openai: OpenAI;
+export class LLMProvider {
+  private client: OpenAI;
   private readonly model: string;
 
   constructor(
     private productRepo: ProductRepository,
     private createOrderUseCase: CreateOrderUseCase
   ) {
-    this.openai = new OpenAI({ apiKey: envConfig.OPENAI_API_KEY });
-    this.model = envConfig.OPENAI_MODEL;
+    this.client = new OpenAI({ apiKey: envConfig.LLM_API_KEY, baseURL: envConfig.LLM_URL });
+    this.model = envConfig.LLM_MODEL;
   }
 
   // Main method: Receives complete history to maintain context
@@ -97,7 +97,7 @@ export class OpenAIProvider {
     ];
 
     // 2. First call to the AI
-    let runner = await this.openai.chat.completions.create({
+    let runner = await this.client.chat.completions.create({
       model: this.model,
       messages: messages,
       tools: TOOLS,
@@ -178,7 +178,7 @@ export class OpenAIProvider {
       });
 
       // 4. Call the AI again to interpret the result and respond to the user
-      runner = await this.openai.chat.completions.create({
+      runner = await this.client.chat.completions.create({
         model: this.model,
         messages: messages,
         tools: TOOLS,

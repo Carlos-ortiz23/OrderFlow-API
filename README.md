@@ -1,6 +1,6 @@
 # OrderFlow API
 
-REST API built with Node.js, TypeScript, and Clean Architecture to manage orders through an intelligent Telegram chatbot. The system allows users to place product orders through natural conversation, using artificial intelligence (OpenAI) to process requests, search for products, and complete transactions automatically.
+REST API built with Node.js, TypeScript, and Clean Architecture to manage orders through an intelligent Telegram chatbot. The system allows users to place product orders through natural conversation, using artificial intelligence (LLM providers) to process requests, search for products, and complete transactions automatically.
 
 ## 🎯 What is OrderFlow?
 
@@ -33,11 +33,11 @@ The system maintains conversation context, validates stock availability in real-
 - ✅ **Clean Architecture**: Clear separation between domain, application, and infrastructure
 - ✅ **TypeScript**: Strong typing for better security and maintainability
 - ✅ **Dependency Injection**: Facilitates testing and implementation changes
-- ✅ **Conversational AI**: Natural language processing with OpenAI
+- ✅ **Conversational AI**: Natural language processing with LLM providers (OpenAI, DeepSeek, Groq, etc.)
 - ✅ **Data Validation**: DTOs and robust input validation
 - ✅ **Error Handling**: Global middleware with structured logging
 - ✅ **Rate Limiting**: Protection against abuse and DDoS attacks
-- ✅ **Health Checks**: External services verification (Supabase, OpenAI, Telegram)
+- ✅ **Health Checks**: External services verification (Supabase, LLM, Telegram)
 - ✅ **Professional Logging**: Log system with levels (debug, info, warn, error)
 - ✅ **Security**: Helmet, CORS, environment variables validation
 - ✅ **Retry Logic**: Automatic retries on external API calls
@@ -48,7 +48,7 @@ The system maintains conversation context, validates stock availability in real-
 - Node.js >= 18.x
 - npm or yarn
 - Supabase account
-- OpenAI API Key
+- LLM API Key (OpenAI, DeepSeek, Groq, etc.)
 - Telegram Bot
 
 ## Installation
@@ -76,9 +76,10 @@ NODE_ENV=development
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your-supabase-anon-key
 
-# OpenAI
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=your-model-ai
+# LLM Configuration (OpenAI, DeepSeek, Groq, etc.)
+LLM_API_KEY=your-llm-api-key
+LLM_MODEL=deepseek-chat
+LLM_URL=https://api.deepseek.com
 
 # Telegram
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
@@ -127,7 +128,7 @@ Detailed health check with service verification
   "checks": {
     "api": { "status": "OK" },
     "supabase": { "status": "OK" },
-    "openai": { "status": "OK" },
+    "llm": { "status": "OK" },
     "telegram": { "status": "OK" }
   }
 }
@@ -156,7 +157,7 @@ src/
 │   ├── bot/               # Chatbot module
 │   │   ├── application/   # Use cases
 │   │   ├── domain/        # Entities and interfaces
-│   │   └── infrastructure/# Telegram, OpenAI, DB
+│   │   └── infrastructure/# Telegram, LLM, DB
 │   ├── products/          # Products module
 │   │   ├── application/   # Use cases
 │   │   ├── domain/        # Entities and interfaces

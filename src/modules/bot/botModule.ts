@@ -2,7 +2,7 @@ import { Router } from "express";
 import { BotController } from "./infrastructure/botController";
 import { ProcessMessageUseCase } from "./application/processMessageUseCase";
 import { TelegramProvider } from "./infrastructure/telegram/telegramProvider";
-import { OpenAIProvider } from "./infrastructure/openai/openAIProvider";
+import { LLMProvider } from "./infrastructure/llm/llmProvider";
 import { SupabaseChatHistoryRepository } from "./infrastructure/database/supabaseChatHistoryRepository";
 import { webhookRateLimiter } from "../../middlewares/rateLimiter";
 import { ProductModule } from "../products/productModule";
@@ -19,7 +19,7 @@ const chatHistoryRepo = new SupabaseChatHistoryRepository();
 const telegramProvider = new TelegramProvider();
 
 // 4. Instantiate the AI Agent (Injecting repositories for it to use as Tools)
-const aiAgent = new OpenAIProvider(productRepo, createOrderUseCase);
+const aiAgent = new LLMProvider(productRepo, createOrderUseCase);
 
 // 5. Instantiate the Use Case (Injecting Telegram, the Agent and the History Repository)
 const useCase = new ProcessMessageUseCase(telegramProvider, aiAgent, chatHistoryRepo);

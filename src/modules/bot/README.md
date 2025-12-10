@@ -2,7 +2,7 @@
 
 ## 📋 Description
 
-Intelligent chatbot module that manages communication with Telegram and processes messages using AI (OpenAI). This module focuses solely on conversational interaction and delegates product and order logic to their respective modules.
+Intelligent chatbot module that manages communication with Telegram and processes messages using AI (LLM providers). This module focuses solely on conversational interaction and delegates product and order logic to their respective modules.
 
 ## 🏗️ Architecture
 
@@ -20,8 +20,8 @@ bot/
     │   └── supabaseChatHistoryRepository.ts
     ├── telegram/        # Telegram provider
     │   └── telegramProvider.ts
-    ├── openai/          # AI Agent
-    │   └── openAIProvider.ts
+    ├── llm/             # AI Agent
+    │   └── llmProvider.ts
     └── dtos/           # Data validators
         └── telegramWebhookDto.ts
 ```
@@ -38,7 +38,7 @@ This ensures **separation of concerns** and facilitates maintenance.
 ## ✨ Implemented Improvements
 
 ### 1. **Dependency Inversion**
-- ✅ `OpenAIProvider` now depends on interfaces (`ProductRepository`, `OrderRepository`) instead of concrete implementations
+- ✅ `LLMProvider` now depends on interfaces (`ProductRepository`, `OrderRepository`) instead of concrete implementations
 - ✅ Facilitates testing and allows changing implementations without modifying code
 
 ### 2. **Robust Error Handling**
@@ -54,7 +54,7 @@ This ensures **separation of concerns** and facilitates maintenance.
 
 ### 4. **Type Safety**
 - ✅ History correctly typed as `ChatMessage[]` instead of `any[]`
-- ✅ Correct use of OpenAI types for messages
+- ✅ Correct use of LLM SDK types for messages
 - ✅ History limit validation (1-50 messages)
 
 ### 5. **Structured Logging**
@@ -63,9 +63,9 @@ This ensures **separation of concerns** and facilitates maintenance.
 - ✅ Appropriate levels: `debug`, `info`, `warn`, `error`
 
 ### 6. **Improved Configuration**
-- ✅ `OPENAI_MODEL` variable added to configuration
-- ✅ Default value: `gpt-3.5-turbo`
-- ✅ Configurable via environment variable
+- ✅ `LLM_MODEL` and `LLM_URL` variables added to configuration
+- ✅ Supports multiple providers (OpenAI, DeepSeek, Groq, etc.)
+- ✅ Configurable via environment variables
 
 ### 7. **Documentation**
 - ✅ Detailed comments about transactions and RPC
@@ -79,9 +79,15 @@ This ensures **separation of concerns** and facilitates maintenance.
 Add these variables to your `.env` file:
 
 ```env
-# OpenAI
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-3.5-turbo  # Optional, defaults to gpt-3.5-turbo
+# LLM Configuration
+LLM_API_KEY=your-api-key
+LLM_MODEL=deepseek-chat
+LLM_URL=https://api.deepseek.com
+
+# Examples for different providers:
+# OpenAI: LLM_URL=https://api.openai.com/v1
+# DeepSeek: LLM_URL=https://api.deepseek.com
+# Groq: LLM_URL=https://api.groq.com/openai/v1
 
 # Telegram
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
@@ -111,7 +117,7 @@ POST /api/bot/webhook
    - Executes the AI agent
    - Sends response through Telegram
    - Saves the interaction in history
-5. `OpenAIProvider` (Agent):
+5. `LLMProvider` (Agent):
    - Searches for products if necessary
    - Finalizes order when user confirms
    - Maintains conversation context
@@ -175,7 +181,7 @@ The module uses structured logging with the following levels:
 ### History Limits
 
 History is limited to 50 messages maximum to:
-- Avoid consuming too many OpenAI tokens
+- Avoid consuming too many LLM tokens
 - Maintain fast responses
 - Reduce costs
 
