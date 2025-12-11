@@ -20,9 +20,10 @@ The system maintains conversation context, validates stock availability in real-
 
 ### ✅ Implemented Modules:
 - **Bot Module**: Intelligent chatbot with AI for Telegram communication
-- **Products Module**: Inventory management and product search
-- **Orders Module**: Order creation and management with stock validation
+- **Products Module**: Complete CRUD for inventory management (create, read, update, delete)
+- **Orders Module**: Order management with automatic customer notifications via Telegram
 - **Health Module**: API and external services status monitoring
+- **Validation Module**: Automatic request validation with Zod schemas
 
 ### 🚧 In Development:
 - **Authentication Module**: Authentication and authorization system for API security
@@ -34,8 +35,8 @@ The system maintains conversation context, validates stock availability in real-
 - ✅ **TypeScript**: Strong typing for better security and maintainability
 - ✅ **Dependency Injection**: Facilitates testing and implementation changes
 - ✅ **Conversational AI**: Natural language processing with LLM providers (OpenAI, DeepSeek, Groq, etc.)
-- ✅ **Data Validation**: DTOs and robust input validation
-- ✅ **Error Handling**: Global middleware with structured logging
+- ✅ **Data Validation**: Automatic request validation with Zod schemas
+- ✅ **Error Handling**: Global middleware with structured logging and process error handlers
 - ✅ **Rate Limiting**: Protection against abuse and DDoS attacks
 - ✅ **Health Checks**: External services verification (Supabase, LLM, Telegram)
 - ✅ **Professional Logging**: Log system with levels (debug, info, warn, error)
@@ -158,9 +159,48 @@ Webhook to receive Telegram messages
 - Asynchronous processing
 - Ignores Telegram commands (e.g., /start, /help)
 
-**Note:** For complete endpoint documentation, visit `/api/docs`
+### Products
 
-## 🏗️ Architecture
+#### GET `/api/products`
+Get all products with pagination
+- Query params: `limit`, `offset`
+
+#### POST `/api/products`
+Create a new product (Admin)
+- Body: `name`, `price`, `stock`, `unit`, `category` (optional), `description` (optional)
+
+#### GET `/api/products/search?q=query`
+Search products by name
+
+#### GET `/api/products/:id`
+Get product details by ID
+
+#### PUT `/api/products/:id`
+Update product information (Admin)
+
+#### DELETE `/api/products/:id`
+Delete a product (Admin)
+
+### Orders
+
+#### GET `/api/orders`
+Get all orders with optional filters
+- Query params: `status`, `limit`, `offset`
+
+#### GET `/api/orders/:id`
+Get order details by ID
+
+#### PATCH `/api/orders/:id/status`
+Update order status (sends automatic notification to customer)
+- Body: `status` (pending, confirmed, in_transit)
+- Triggers automatic Telegram notification to customer
+
+#### GET `/api/orders/stats`
+Get order statistics
+
+**Note:** For complete endpoint documentation with examples, visit `/api/docs`
+
+## Architecture
 
 ```
 src/
@@ -171,20 +211,23 @@ src/
 ├── middlewares/           # Express middlewares
 │   ├── errorHandler.ts    # Global error handling
 │   ├── rateLimiter.ts     # Rate limiting
-│   └── requestLogger.ts   # Request logging
+│   ├── requestLogger.ts   # Request logging
+│   └── validateRequest.ts # Zod schema validation
 ├── modules/               # Independent modules (Hexagonal Architecture)
 │   ├── bot/               # Chatbot module
 │   │   ├── application/   # Use cases
 │   │   ├── domain/        # Entities and interfaces
 │   │   └── infrastructure/# Telegram, LLM, DB
 │   ├── products/          # Products module
-│   │   ├── application/   # Use cases
+│   │   ├── application/   # Use cases (CRUD operations)
 │   │   ├── domain/        # Entities and interfaces
-│   │   └── infrastructure/# Repositories
+│   │   ├── infrastructure/# Repositories and controllers
+│   │   └── schemas/       # Zod validation schemas
 │   ├── orders/            # Orders module
-│   │   ├── application/   # Use cases
+│   │   ├── application/   # Use cases (including notifications)
 │   │   ├── domain/        # Entities and interfaces
-│   │   └── infrastructure/# Repositories
+│   │   ├── infrastructure/# Repositories and controllers
+│   │   └── schemas/       # Zod validation schemas
 │   └── health/            # Health checks
 ├── utils/                 # Utilities
 │   └── logger.ts          # Logging system
@@ -198,15 +241,28 @@ src/
 - **Dependency Inversion**: Dependencies point towards abstractions
 - **Single Responsibility**: Each module has a single responsibility
 
-## 🔒 Security
+##  Automatic Notifications
+
+The system sends automatic Telegram notifications to customers when order status changes:
+
+### Order Status Flow
+1. **Pending** ⏳ - Order received, waiting for confirmation
+2. **Confirmed** ✅ - Order confirmed and ready
+3. **In Transit** 🚚 - Order on its way to customer
+
+Each status change triggers a personalized message to the customer via Telegram, keeping them informed throughout the entire process.
+
+## Security
 
 ### Infrastructure Security
 - ✅ Validation of all environment variables at startup
 - ✅ Helmet for security headers
 - ✅ CORS configured
 - ✅ Rate limiting per IP
-- ✅ Input validation with DTOs
+- ✅ Automatic input validation with Zod schemas
 - ✅ No exposure of internal errors in production
+- ✅ Process error handlers (unhandled rejections, uncaught exceptions)
+- ✅ Graceful shutdown on SIGTERM/SIGINT signals
 
 ### Bot Security & Privacy
 - ✅ **Never requests sensitive information** (credit cards, passwords, IDs)
