@@ -5,11 +5,9 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'OrderFlow API',
+      title: 'OrderFlow API Documentation',
       version: '1.0.0',
       description: `
-# OrderFlow API Documentation
-
 Professional REST API for conversational commerce through Telegram bot with AI-powered order processing.
 
 ## Features
@@ -75,18 +73,40 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
         Error: {
           type: 'object',
           properties: {
+            success: {
+              type: 'boolean',
+              example: false,
+              description: 'Always false for errors'
+            },
             error: {
               type: 'string',
               description: 'Error message describing what went wrong',
               example: 'Invalid request data'
             },
+            statusCode: {
+              type: 'integer',
+              description: 'HTTP status code',
+              example: 400
+            },
             details: {
-              type: 'object',
-              description: 'Additional error details for debugging',
-              additionalProperties: true
+              type: 'array',
+              description: 'Validation error details (for Zod validation errors)',
+              items: {
+                type: 'object',
+                properties: {
+                  field: {
+                    type: 'string',
+                    example: 'body.price'
+                  },
+                  message: {
+                    type: 'string',
+                    example: 'Price must be a positive number'
+                  }
+                }
+              }
             }
           },
-          required: ['error']
+          required: ['success', 'error']
         },
         HealthCheck: {
           type: 'object',
@@ -194,6 +214,11 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
               description: 'Available stock quantity',
               example: 100
             },
+            unit: {
+              type: 'string',
+              description: 'Unit of measurement',
+              example: 'kg'
+            },
             category: {
               type: 'string',
               description: 'Product category',
@@ -205,7 +230,7 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
               description: 'Product creation timestamp'
             }
           },
-          required: ['id', 'name', 'price', 'stock']
+          required: ['id', 'name', 'price', 'stock', 'unit']
         },
         Order: {
           type: 'object',
@@ -216,7 +241,7 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
               description: 'Unique order identifier',
               example: '123e4567-e89b-12d3-a456-426614174001'
             },
-            user_id: {
+            userId: {
               type: 'string',
               description: 'Telegram chat ID of the customer',
               example: '123456789'
@@ -236,7 +261,7 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
             },
             status: {
               type: 'string',
-              enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+              enum: ['pending', 'confirmed', 'in_transit'],
               description: 'Order status',
               example: 'confirmed'
             },
@@ -246,7 +271,7 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
               description: 'Order creation timestamp'
             }
           },
-          required: ['id', 'user_id', 'items', 'total', 'status']
+          required: ['id', 'userId', 'items', 'total', 'status']
         },
         OrderItem: {
           type: 'object',
@@ -323,18 +348,75 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
         }
       },
       responses: {
+        Success: {
+          description: 'Successful operation',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: {
+                    type: 'boolean',
+                    example: true
+                  },
+                  data: {
+                    type: 'object'
+                  }
+                }
+              }
+            }
+          }
+        },
+        Created: {
+          description: 'Resource created successfully',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: {
+                    type: 'boolean',
+                    example: true
+                  },
+                  data: {
+                    type: 'object'
+                  }
+                }
+              }
+            }
+          }
+        },
         BadRequest: {
-          description: 'Bad request - Invalid input data',
+          description: 'Bad request - Invalid input data or validation failed',
           content: {
             'application/json': {
               schema: {
                 $ref: '#/components/schemas/Error'
               },
-              example: {
-                error: 'Invalid request data',
-                details: {
-                  field: 'email',
-                  message: 'Invalid email format'
+              examples: {
+                validationError: {
+                  summary: 'Validation Error',
+                  value: {
+                    success: false,
+                    error: 'Validation failed',
+                    details: [
+                      {
+                        field: 'body.price',
+                        message: 'Price must be a positive number'
+                      },
+                      {
+                        field: 'body.stock',
+                        message: 'Stock must be an integer'
+                      }
+                    ]
+                  }
+                },
+                missingFields: {
+                  summary: 'Missing Required Fields',
+                  value: {
+                    success: false,
+                    error: 'Name, price, and stock are required fields'
+                  }
                 }
               }
             }
@@ -360,8 +442,21 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
               schema: {
                 $ref: '#/components/schemas/Error'
               },
-              example: {
-                error: 'Resource not found'
+              examples: {
+                productNotFound: {
+                  summary: 'Product Not Found',
+                  value: {
+                    success: false,
+                    error: 'Product not found'
+                  }
+                },
+                orderNotFound: {
+                  summary: 'Order Not Found',
+                  value: {
+                    success: false,
+                    error: 'Order not found'
+                  }
+                }
               }
             }
           }
@@ -386,8 +481,29 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
               schema: {
                 $ref: '#/components/schemas/Error'
               },
-              example: {
-                error: 'An unexpected error occurred'
+              examples: {
+                generic: {
+                  summary: 'Generic Server Error',
+                  value: {
+                    success: false,
+                    error: 'Internal server error',
+                    statusCode: 500
+                  }
+                },
+                specific: {
+                  summary: 'Specific Error (Development)',
+                  value: {
+                    success: false,
+                    error: 'Error creating product',
+                    statusCode: 500,
+                    stack: '...',
+                    details: {
+                      path: '/api/products',
+                      method: 'POST',
+                      timestamp: '2024-12-11T00:00:00.000Z'
+                    }
+                  }
+                }
               }
             }
           }
