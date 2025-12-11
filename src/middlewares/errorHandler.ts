@@ -43,10 +43,17 @@ export const errorHandler = (
 
   // Respond to the client
   res.status(statusCode).json({
-    status: "error",
+    success: false,
+    error: message,
     statusCode,
-    message,
-    ...(envConfig.isDevelopment() && { stack: err.stack }),
+    ...(envConfig.isDevelopment() && { 
+      stack: err.stack,
+      details: {
+        path: req.path,
+        method: req.method,
+        timestamp: new Date().toISOString()
+      }
+    }),
   });
 };
 

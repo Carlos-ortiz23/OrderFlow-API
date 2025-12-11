@@ -81,5 +81,31 @@ class Server {
   }
 }
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+  logger.error('Unhandled Rejection at:', { promise, reason });
+  // Exit gracefully
+  process.exit(1);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error: Error) => {
+  logger.error('Uncaught Exception:', { error });
+  // Exit gracefully
+  process.exit(1);
+});
+
+// Handle SIGTERM signal (graceful shutdown)
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM signal received: closing HTTP server');
+  process.exit(0);
+});
+
+// Handle SIGINT signal (Ctrl+C)
+process.on('SIGINT', () => {
+  logger.info('SIGINT signal received: closing HTTP server');
+  process.exit(0);
+});
+
 const server = new Server();
 server.listen();
