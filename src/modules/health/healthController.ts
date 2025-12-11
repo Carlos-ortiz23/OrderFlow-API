@@ -134,7 +134,7 @@ export class HealthController {
     message: string;
   }> {
     try {
-      const llm = new OpenAI({ apiKey: envConfig.LLM_API_KEY });
+      const llm = new OpenAI({ apiKey: envConfig.LLM_API_KEY, baseURL: envConfig.LLM_URL });
 
       // Make a simple call to verify the API key
       await llm.models.list();

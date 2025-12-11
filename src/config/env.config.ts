@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { logger } from "../utils/logger";
 
 /**
  * Centralized environment variables configuration
@@ -32,11 +33,6 @@ class EnvironmentConfig {
     this.LLM_MODEL = this.getRequiredEnvVar("LLM_MODEL");
     this.LLM_URL = this.getRequiredEnvVar("LLM_URL");
     this.TELEGRAM_BOT_TOKEN = this.getRequiredEnvVar("TELEGRAM_BOT_TOKEN");
-
-    // Log successful configuration (without exposing sensitive values)
-    console.log("✓ Environment configuration validated successfully");
-    console.log(`✓ Environment: ${this.NODE_ENV}`);
-    console.log(`✓ Port: ${this.PORT}`);
   }
 
   /**
