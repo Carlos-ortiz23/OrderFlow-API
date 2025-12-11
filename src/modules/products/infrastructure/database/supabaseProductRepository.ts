@@ -33,4 +33,65 @@ export class SupabaseProductRepository implements ProductRepository {
     return data;
   }
 
+  // Get all products with pagination
+  async getAllProducts(limit: number = 50, offset: number = 0): Promise<Product[]> {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .range(offset, offset + limit - 1)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      logger.error("Error getting all products", { error });
+      return [];
+    }
+
+    return data || [];
+  }
+
+  // Create new product
+  async createProduct(productData: Omit<Product, 'id' | 'created_at'>): Promise<Product> {
+    const { data, error } = await supabase
+      .from("products")
+      .insert([productData])
+      .select()
+      .single();
+
+    if (error) {
+      logger.error("Error creating product", { error });
+      throw new Error("Failed to create product");
+    }
+
+    return data;
+  }
+
+  // Update existing product
+  async updateProduct(id: string, updates: Partial<Product>): Promise<boolean> {
+    const { error } = await supabase
+      .from("products")
+      .update(updates)
+      .eq("id", id);
+
+    if (error) {
+      logger.error("Error updating product", { error, id });
+      return false;
+    }
+
+    return true;
+  }
+
+  // Delete product
+  async deleteProduct(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      logger.error("Error deleting product", { error, id });
+      return false;
+    }
+
+    return true;
+  }
 }

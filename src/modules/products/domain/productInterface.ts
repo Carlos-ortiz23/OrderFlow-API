@@ -7,4 +7,6 @@ export interface Product {
   price: number;
   stock: number;
   unit: string;
+  category?: string;
+  created_at?: string;
 }
