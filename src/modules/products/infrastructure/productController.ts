@@ -37,6 +37,13 @@ export class ProductController {
    *           type: integer
    *           default: 0
    *         description: Number of products to skip
+   *       - in: query
+   *         name: storeId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Store ID to filter products
    *     responses:
    *       200:
    *         description: Products retrieved successfully
@@ -113,6 +120,13 @@ export class ProductController {
    *           type: string
    *         description: Search query
    *         example: coffee
+   *       - in: query
+   *         name: storeId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Store ID to search within
    *     responses:
    *       200:
    *         description: Products found successfully
@@ -180,6 +194,13 @@ export class ProductController {
    *           type: string
    *           format: uuid
    *         description: Product ID
+   *       - in: query
+   *         name: storeId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Store ID required for multi-tenancy check
    *     responses:
    *       200:
    *         description: Product found
@@ -249,7 +270,13 @@ export class ProductController {
    *               - price
    *               - stock
    *               - unit
+   *               - storeId
    *             properties:
+   *               storeId:
+   *                 type: string
+   *                 format: uuid
+   *                 description: Store ID to associate the product with
+   *                 example: "123e4567-e89b-12d3-a456-426614174000"
    *               name:
    *                 type: string
    *                 example: "Premium Coffee Beans"
@@ -450,6 +477,13 @@ export class ProductController {
    *           type: string
    *           format: uuid
    *         description: Product ID
+   *       - in: query
+   *         name: storeId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Store ID required for deletion
    *     responses:
    *       200:
    *         description: Product deleted successfully
