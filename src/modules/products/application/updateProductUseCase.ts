@@ -5,21 +5,20 @@ import { ProductRepository } from "../domain/productRepositoryInterface";
  * Used by store owner to modify product details (price, stock, etc.)
  */
 export class UpdateProductUseCase {
-  constructor(private readonly productRepo: ProductRepository) {}
+  constructor(private readonly productRepo: ProductRepository) { }
 
   async execute(id: string, updates: Partial<{
     name: string;
     description: string;
     price: number;
-    stock: number;
-    category: string;
+    stock_quantity: number;
   }>): Promise<boolean> {
     // Validate updates
     if (updates.price !== undefined && updates.price < 0) {
       throw new Error("Price cannot be negative");
     }
 
-    if (updates.stock !== undefined && updates.stock < 0) {
+    if (updates.stock_quantity !== undefined && updates.stock_quantity < 0) {
       throw new Error("Stock cannot be negative");
     }
 

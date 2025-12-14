@@ -6,9 +6,9 @@ import { Product } from "../domain/productInterface";
  * Used by store owner to view entire inventory
  */
 export class GetAllProductsUseCase {
-  constructor(private readonly productRepo: ProductRepository) {}
+  constructor(private readonly productRepo: ProductRepository) { }
 
-  async execute(limit: number = 50, offset: number = 0): Promise<Product[]> {
-    return await this.productRepo.getAllProducts(limit, offset);
+  async execute(limit: number = 50, offset: number = 0, storeId: string): Promise<Product[]> {
+    return await this.productRepo.getAllProducts(limit, offset, storeId);
   }
 }

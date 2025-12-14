@@ -15,7 +15,7 @@ export class ProductController {
     private readonly updateProductUseCase: UpdateProductUseCase,
     private readonly deleteProductUseCase: DeleteProductUseCase,
     private readonly getAllProductsUseCase: GetAllProductsUseCase
-  ) {}
+  ) { }
 
   /**
    * @swagger
@@ -65,10 +65,19 @@ export class ProductController {
    */
   getAllProducts = async (req: Request, res: Response) => {
     try {
-      const { limit = 50, offset = 0 } = req.query;
+      const { limit = 50, offset = 0, storeId } = req.query;
+
+      if (!storeId || typeof storeId !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "storeId is required",
+        });
+      }
+
       const products = await this.getAllProductsUseCase.execute(
         Number(limit),
-        Number(offset)
+        Number(offset),
+        storeId
       );
 
       res.json({
@@ -125,7 +134,14 @@ export class ProductController {
    */
   searchProducts = async (req: Request, res: Response) => {
     try {
-      const { q } = req.query;
+      const { q, storeId } = req.query;
+
+      if (!storeId || typeof storeId !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "storeId is required",
+        });
+      }
 
       if (!q || typeof q !== "string") {
         return res.status(400).json({
@@ -134,7 +150,7 @@ export class ProductController {
         });
       }
 
-      const products = await this.searchProductsUseCase.execute(q);
+      const products = await this.searchProductsUseCase.execute(q, storeId);
 
       res.json({
         success: true,
@@ -184,8 +200,16 @@ export class ProductController {
   getProductById = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const { storeId } = req.query;
 
-      const product = await this.getProductByIdUseCase.execute(id);
+      if (!storeId || typeof storeId !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "storeId is required",
+        });
+      }
+
+      const product = await this.getProductByIdUseCase.execute(id, storeId);
 
       if (!product) {
         return res.status(404).json({
@@ -264,13 +288,13 @@ export class ProductController {
    */
   createProduct = async (req: Request, res: Response) => {
     try {
-      const { name, description, price, stock, unit, category } = req.body;
+      const { name, description, price, stock, unit, category, storeId } = req.body;
 
       // Validate required fields
-      if (!name || price === undefined || stock === undefined) {
+      if (!name || price === undefined || stock === undefined || !storeId) {
         return res.status(400).json({
           success: false,
-          error: "Name, price, and stock are required fields",
+          error: "Name, price, stock, and storeId are required fields",
         });
       }
 
@@ -293,9 +317,9 @@ export class ProductController {
         name,
         description: description || "",
         price,
-        stock,
-        unit: unit,
-        category: category,
+        stock_quantity: stock, // Map stock to stock_quantity
+        store_id: storeId, // Map storeId to store_id
+        is_active: true, // Default to true
       });
 
       logger.info("Product created successfully", { productId: product.id, name });
@@ -384,7 +408,10 @@ export class ProductController {
         });
       }
 
-      const updated = await this.updateProductUseCase.execute(id, updates);
+      const updated = await this.updateProductUseCase.execute(id, {
+        ...updates,
+        stock_quantity: updates.stock, // Map stock to stock_quantity
+      });
 
       if (!updated) {
         return res.status(404).json({
@@ -443,8 +470,16 @@ export class ProductController {
   deleteProduct = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const { storeId } = req.query;
 
-      const deleted = await this.deleteProductUseCase.execute(id);
+      if (!storeId || typeof storeId !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "storeId is required",
+        });
+      }
+
+      const deleted = await this.deleteProductUseCase.execute(id, storeId);
 
       if (!deleted) {
         return res.status(404).json({
