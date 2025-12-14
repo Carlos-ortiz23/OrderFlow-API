@@ -2,8 +2,36 @@ import { supabase } from "../../../../config/supabase";
 import { Order, OrderItemDetail } from "../../domain/orderInterface";
 import { OrderRepository } from "../../domain/orderRepositoryInterface";
 import { logger } from "../../../../utils/logger";
+import { OrderStatus } from "../../../common/constants";
 
 export class SupabaseOrderRepository implements OrderRepository {
+  /**
+   * Helper to get status ID from code
+   */
+  private async getStatusId(code: string): Promise<number | null> {
+    const { data, error } = await supabase
+      .from("order_statuses")
+      .select("id")
+      .eq("code", code)
+      .single();
+    if (error || !data) return null;
+    return data.id;
+  }
+
+  /**
+   * Helper to get status Code from ID
+   * In a real app, we should cache this mapping.
+   */
+  private async getStatusCode(id: number): Promise<string> {
+    const { data, error } = await supabase
+      .from("order_statuses")
+      .select("code")
+      .eq("id", id)
+      .single();
+    if (error || !data) return "pending"; // Default fallback
+    return data.code;
+  }
+
   /**
    * Creates a complete order with stock validation and automatic reduction
    */
@@ -13,9 +41,9 @@ export class SupabaseOrderRepository implements OrderRepository {
       for (const item of order.items) {
         const { data: product, error } = await supabase
           .from("products")
-          .select("stock_quantity, price, name, store_id") // Fetch price/name for snapshot
+          .select("stock_quantity, price, name, store_id")
           .eq("id", item.productId)
-          .eq("store_id", order.storeId) // Ensure product belongs to store
+          .eq("store_id", order.storeId)
           .single();
 
         if (error || !product) {
@@ -34,25 +62,23 @@ export class SupabaseOrderRepository implements OrderRepository {
           );
         }
 
-        logger.info("Stock valid for product", {
-          name: product.name,
-          stock: product.stock_quantity,
-          requested: item.quantity
-        });
-
-        // Update item details with snapshot data from DB (Security: don't trust frontend price)
+        // Update item details with snapshot data
         item.unitPrice = product.price;
         item.productName = product.name;
       }
 
-      // 2. Insert Header (orders table)
+      // 2. Get Status ID for 'pending'
+      const pendingStatusId = await this.getStatusId(OrderStatus.PENDING) || 1;
+
+      // 3. Insert Header (orders table)
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
           store_id: order.storeId,
-          client_id: order.userId, // Map userId to client_id
-          status_id: 1, // Default 'pending'
+          client_id: order.userId, // Maps domain 'userId' (client) to DB 'client_id'
+          status_id: pendingStatusId,
           total_amount: order.total,
+          // payment_method_id: ... (Assuming undefined or null for now until payment flow is added)
         })
         .select("id")
         .single();
@@ -64,7 +90,7 @@ export class SupabaseOrderRepository implements OrderRepository {
 
       const orderId = orderData.id;
 
-      // 3. Prepare the Items
+      // 4. Prepare the Items
       const itemsToInsert = order.items.map((item) => ({
         order_id: orderId,
         product_id: item.productId,
@@ -73,23 +99,18 @@ export class SupabaseOrderRepository implements OrderRepository {
         unit_price: item.unitPrice,
       }));
 
-      // 4. Insert Details (order_items table)
+      // 5. Insert Details (order_items table)
       const { error: itemsError } = await supabase
         .from("order_items")
         .insert(itemsToInsert);
 
       if (itemsError) {
         logger.error("Error inserting items", { error: itemsError, orderId });
-        // Rollback: Try to delete the order if item insertion failed
-        try {
-          await supabase.from("orders").delete().eq("id", orderId);
-        } catch (rollbackError) {
-          logger.error("Critical error in order rollback", { error: rollbackError, orderId });
-        }
+        await this.rollbackOrder(orderId);
         throw new Error("Error saving order items");
       }
 
-      // 5. Reduce stock for each product
+      // 6. Reduce stock
       for (const item of order.items) {
         const { error: stockError } = await supabase.rpc("reduce_product_stock", {
           product_id: item.productId,
@@ -98,13 +119,9 @@ export class SupabaseOrderRepository implements OrderRepository {
 
         if (stockError) {
           logger.error("Error reducing stock", { error: stockError, productId: item.productId, orderId });
-          // Rollback: If stock reduction fails, try manual rollback
-          try {
-            await supabase.from("order_items").delete().eq("order_id", orderId);
-            await supabase.from("orders").delete().eq("id", orderId);
-          } catch (rollbackError) {
-            logger.error("Critical error in complete rollback", { error: rollbackError, orderId });
-          }
+          // If stock reduction fails, we must rollback everything
+          // Note: In production you might want soft delete or state 'cancelled' instead of hard delete
+          await this.rollbackOrder(orderId);
           throw new Error(
             `Error reducing stock for ${item.productName}. Order cancelled.`
           );
@@ -118,11 +135,21 @@ export class SupabaseOrderRepository implements OrderRepository {
     }
   }
 
+  private async rollbackOrder(orderId: string) {
+    try {
+      await supabase.from("order_items").delete().eq("order_id", orderId);
+      await supabase.from("orders").delete().eq("id", orderId);
+    } catch (e) {
+      logger.error("CRITICAL: Failed to rollback order", { orderId, error: e });
+    }
+  }
+
   async getOrderById(orderId: string): Promise<Order | null> {
     const { data: orderData, error } = await supabase
       .from("orders")
       .select(`
         *,
+        order_statuses ( code, label ),
         order_items (
           product_id,
           product_name_snapshot,
@@ -145,14 +172,16 @@ export class SupabaseOrderRepository implements OrderRepository {
       unitPrice: item.unit_price,
     }));
 
+    // Extract status code from join
+    // @ts-ignore
+    const statusCode = orderData.order_statuses?.code || "pending";
+
     return new Order(
       orderData.store_id,
       orderData.client_id,
       items,
       orderData.total_amount,
-      "pending", // We should map status_id to string, but for now hardcode or fetch map. 
-      // Ideally we join order_statuses. Let's assume 'pending' for simplicity or fetch it.
-      // The query didn't join order_statuses.
+      statusCode,
       orderData.id
     );
   }
@@ -162,6 +191,7 @@ export class SupabaseOrderRepository implements OrderRepository {
       .from("orders")
       .select(`
         *,
+        order_statuses ( code ),
         order_items (
           product_id,
           product_name_snapshot,
@@ -191,35 +221,32 @@ export class SupabaseOrderRepository implements OrderRepository {
         unitPrice: item.unit_price,
       }));
 
+      // @ts-ignore
+      const statusCode = orderData.order_statuses?.code || "pending";
+
       return new Order(
         orderData.store_id,
         orderData.client_id,
         items,
         orderData.total_amount,
-        "pending", // Placeholder, see above
+        statusCode,
         orderData.id
       );
     });
   }
 
   async getOrdersByStatus(
-    status: string,
+    statusCode: string,
     limit: number = 50,
     offset: number = 0,
     storeId?: string
   ): Promise<Order[]> {
-    // We need to map status string to ID or join.
-    // For now, let's assume we can filter by joined status code if we change the query.
-    // Or we just ignore status filter for a moment if we don't have the map.
-    // But the requirement is strict.
-    // Let's assume status is passed as ID or we fetch it.
-    // Actually, let's join order_statuses!
-
+    // We filter by the relation
     let query = supabase
       .from("orders")
       .select(`
         *,
-        order_statuses!inner(code),
+        order_statuses!inner ( code ),
         order_items (
           product_id,
           product_name_snapshot,
@@ -227,7 +254,7 @@ export class SupabaseOrderRepository implements OrderRepository {
           unit_price
         )
       `)
-      .eq("order_statuses.code", status)
+      .eq("order_statuses.code", statusCode)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -238,7 +265,7 @@ export class SupabaseOrderRepository implements OrderRepository {
     const { data, error } = await query;
 
     if (error || !data) {
-      logger.error("Error getting orders by status", { error, status });
+      logger.error("Error getting orders by status", { error, statusCode });
       return [];
     }
 
@@ -250,31 +277,25 @@ export class SupabaseOrderRepository implements OrderRepository {
         unitPrice: item.unit_price,
       }));
 
+      // @ts-ignore
+      const code = orderData.order_statuses?.code || statusCode;
+
       return new Order(
         orderData.store_id,
         orderData.client_id,
         items,
         orderData.total_amount,
-        "pending", // Placeholder
+        code,
         orderData.id
       );
     });
   }
 
-  async updateOrderStatus(orderId: string, status: string): Promise<boolean> {
-    const statusMap: Record<string, number> = {
-      "pending": 1,
-      "confirmed": 2,
-      "paid": 3,
-      "shipped": 4,
-      "cancelled": 5,
-      "completed": 6
-    };
-
-    const statusId = statusMap[status];
+  async updateOrderStatus(orderId: string, statusCode: string): Promise<boolean> {
+    const statusId = await this.getStatusId(statusCode);
 
     if (!statusId) {
-      logger.warn("Invalid status", { status, orderId });
+      logger.warn("Invalid status code", { statusCode, orderId });
       return false;
     }
 
@@ -284,18 +305,25 @@ export class SupabaseOrderRepository implements OrderRepository {
       .eq("id", orderId);
 
     if (error) {
-      logger.error("Error updating order status", { error, orderId, status });
+      logger.error("Error updating order status", { error, orderId, statusCode });
       return false;
     }
 
-    logger.info("Order status updated", { orderId, status });
+    logger.info("Order status updated", { orderId, statusCode });
     return true;
   }
 
   async getOrderStats(storeId?: string): Promise<any> {
+    // Ideally use a DB view or grouped query.
+    // Fetching all rows is expensive but fine for MVP/Small scale.
+    // Optimizing to fetch minimal data.
     let query = supabase
       .from("orders")
-      .select("status_id, total_amount, created_at");
+      .select(`
+        total_amount, 
+        created_at,
+        order_statuses (code)
+      `);
 
     if (storeId) {
       query = query.eq("store_id", storeId);
@@ -305,29 +333,21 @@ export class SupabaseOrderRepository implements OrderRepository {
 
     if (error || !orders) {
       logger.error("Error getting statistics", { error });
-      return {
-        total: 0,
-        pending: 0,
-        confirmed: 0,
-        shipped: 0,
-        cancelled: 0,
-        todayTotal: 0,
-        todayRevenue: 0,
-      };
+      return { total: 0 };
     }
 
     const today = new Date().toISOString().split("T")[0];
 
     const stats = {
       total: orders.length,
-      pending: orders.filter((o) => o.status_id === 1).length,
-      confirmed: orders.filter((o) => o.status_id === 2).length,
-      shipped: orders.filter((o) => o.status_id === 4).length,
-      cancelled: orders.filter((o) => o.status_id === 5).length,
-      todayTotal: orders.filter((o) => o.created_at.startsWith(today)).length,
+      pending: orders.filter((o: any) => o.order_statuses?.code === OrderStatus.PENDING).length,
+      confirmed: orders.filter((o: any) => o.order_statuses?.code === OrderStatus.CONFIRMED).length,
+      shipped: orders.filter((o: any) => o.order_statuses?.code === OrderStatus.SHIPPED).length,
+      cancelled: orders.filter((o: any) => o.order_statuses?.code === OrderStatus.CANCELLED).length,
+      todayTotal: orders.filter((o: any) => o.created_at.startsWith(today)).length,
       todayRevenue: orders
-        .filter((o) => o.created_at.startsWith(today) && o.status_id !== 5)
-        .reduce((sum, o) => sum + parseFloat(o.total_amount), 0),
+        .filter((o: any) => o.created_at.startsWith(today) && o.order_statuses?.code !== OrderStatus.CANCELLED)
+        .reduce((sum: number, o: any) => sum + parseFloat(o.total_amount), 0),
     };
 
     return stats;
