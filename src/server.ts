@@ -7,6 +7,8 @@ import { swaggerSpec } from "./config/swagger.config";
 import { BotModule } from "./modules/bot/botModule";
 import { ProductModule } from "./modules/products/productModule";
 import { OrderModule } from "./modules/orders/orderModule";
+import { storeRouter } from "./modules/stores/storeModule";
+import { userRouter } from "./modules/users/userModule";
 import { HealthController } from "./modules/health/healthController";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/requestLogger";
@@ -31,13 +33,13 @@ class Server {
   private middlewares() {
     // Request logger (must go first to capture all requests)
     this.app.use(requestLogger);
-    
+
     // Helmet for basic header security
     this.app.use(helmet());
-    
+
     // CORS to allow requests from frontend/dashboard
     this.app.use(cors());
-    
+
     // JSON parsing (useful for webhooks)
     this.app.use(express.json());
   }
@@ -61,6 +63,8 @@ class Server {
     this.app.use("/api/bot", BotModule.routes);
     this.app.use("/api/products", ProductModule.routes);
     this.app.use("/api/orders", OrderModule.routes);
+    this.app.use("/api/stores", storeRouter);
+    this.app.use("/api/users", userRouter); // Mostly internal or future use
   }
 
   private errorHandlers() {

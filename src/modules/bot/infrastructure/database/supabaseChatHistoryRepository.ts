@@ -34,6 +34,7 @@ export class SupabaseChatHistoryRepository implements ChatHistoryRepository {
 
     // Reverse for chronological order (oldest first)
     return (data || []).reverse().map((msg: any) => ({
+      // @ts-ignore
       role: msg.chat_roles?.code as "user" | "assistant" | "system",
       content: msg.content,
       created_at: msg.created_at,
@@ -44,11 +45,7 @@ export class SupabaseChatHistoryRepository implements ChatHistoryRepository {
    * Saves messages in the history
    */
   async saveMessages(clientId: string, messages: ChatMessage[]): Promise<void> {
-    // We need role_ids. Since we can't easily do a subquery in a bulk insert in Supabase JS client 
-    // without a stored procedure or separate queries, we'll fetch roles first or assume standard IDs.
-    // To be robust, let's fetch the roles map once (or cache it).
-    // For now, I'll fetch them.
-
+    // Get all roles
     const { data: roles, error: rolesError } = await supabase
       .from("chat_roles")
       .select("id, code");
@@ -63,6 +60,8 @@ export class SupabaseChatHistoryRepository implements ChatHistoryRepository {
     const messagesToInsert = messages.map((msg) => {
       const roleId = roleMap.get(msg.role);
       if (!roleId) {
+        // Fallback or error. For robustness, if 'function' role appears (unlikely in this simple bot), map to system or assistant.
+        // Assuming strict types:
         throw new Error(`Invalid role: ${msg.role}`);
       }
       return {
