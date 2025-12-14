@@ -38,7 +38,7 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
         description: 'Development server'
       },
       {
-        url: 'https://api.orderflow.com',
+        url: 'https://orderflow-api-831973953542.northamerica-south1.run.app',
         description: 'Production server'
       }
     ],
@@ -592,7 +592,9 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
       }
     }
   },
-  apis: ['./src/modules/**/*.ts', './src/server.ts']
+  apis: envConfig.NODE_ENV === 'production'
+    ? ['./dist/modules/**/*.js', './dist/server.js']
+    : ['./src/modules/**/*.ts', './src/server.ts']
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
