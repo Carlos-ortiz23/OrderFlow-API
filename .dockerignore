@@ -1,0 +1,23 @@
+# Ignore node modules and build output
+node_modules
+dist
+npm-debug.log*
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Docker-related
+Dockerfile
+.dockerignore
+
+# VCS and editor metadata
+.git
+.gitignore
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db
