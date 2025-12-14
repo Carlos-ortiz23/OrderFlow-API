@@ -5,12 +5,13 @@ import { logger } from "../../../../utils/logger";
 
 export class SupabaseProductRepository implements ProductRepository {
   // Tool 1: Search products (so the AI knows prices and stock)
-  async searchProducts(query: string): Promise<Product[]> {
+  async searchProducts(query: string, storeId: string): Promise<Product[]> {
     const { data, error } = await supabase
       .from("products")
       .select("*")
+      .eq("store_id", storeId) // Filter by store
       .ilike("name", `%${query}%`) // Flexible search (e.g.: "rice" finds "White Rice")
-      .gt("stock", 0) // Only show what's available
+      .gt("stock_quantity", 0) // Only show what's available
       .limit(5);
 
     if (error) {
@@ -22,11 +23,12 @@ export class SupabaseProductRepository implements ProductRepository {
   }
 
   // Tool 2: Get exact product (to calculate total when purchasing)
-  async getProductById(id: string): Promise<Product | null> {
+  async getProductById(id: string, storeId: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from("products")
       .select("*")
       .eq("id", id)
+      .eq("store_id", storeId) // Verify ownership
       .single();
 
     if (error) return null;
@@ -34,10 +36,11 @@ export class SupabaseProductRepository implements ProductRepository {
   }
 
   // Get all products with pagination
-  async getAllProducts(limit: number = 50, offset: number = 0): Promise<Product[]> {
+  async getAllProducts(limit: number = 50, offset: number = 0, storeId: string): Promise<Product[]> {
     const { data, error } = await supabase
       .from("products")
       .select("*")
+      .eq("store_id", storeId)
       .range(offset, offset + limit - 1)
       .order("created_at", { ascending: false });
 
