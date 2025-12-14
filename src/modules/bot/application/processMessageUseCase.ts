@@ -8,30 +8,34 @@ export class ProcessMessageUseCase {
     private readonly messagingProvider: MessagingProvider,
     private readonly aiAgent: LLMProvider,
     private readonly chatHistoryRepo: ChatHistoryRepository
-  ) {}
+  ) { }
 
   async run(
     content: string,
-    chatId: string,
-    senderName: string
+    client: any, // Using any for now to avoid circular dependency or import issues, will fix import
+    storeId: string
   ): Promise<void> {
+    const chatId = client.telegram_id.toString();
+    const senderName = client.first_name || "Customer";
     try {
-      logger.info("Processing user message", { 
-        senderName, 
-        chatId, 
-        messageLength: content.length 
+      logger.info("Processing user message", {
+        senderName,
+        chatId,
+        messageLength: content.length
       });
 
       // 1. Load History (Context) using the repository
       // We fetch the last 10 messages to provide context without spending too many tokens
-      const history = await this.chatHistoryRepo.getHistory(chatId, 10);
+      // NOW using client.id (UUID) instead of chatId (Telegram ID)
+      const history = await this.chatHistoryRepo.getHistory(client.id, 10);
 
       // 2. Execute the Agent
       // The agent (OpenAIProvider) handles the thinking loop, product search, and order creation
       const responseText = await this.aiAgent.runAgent(
-        chatId,
+        client.id, // Pass client.id instead of chatId
         content,
-        history
+        history,
+        storeId // Pass storeId for context/products
       );
 
       // 3. Respond to the user on Telegram
@@ -39,7 +43,7 @@ export class ProcessMessageUseCase {
 
       // 4. Save the new interaction in the History (Memory persistence)
       // We save both what the user said and what the bot responded
-      await this.chatHistoryRepo.saveMessages(chatId, [
+      await this.chatHistoryRepo.saveMessages(client.id, [
         { role: "user", content: content },
         { role: "assistant", content: responseText },
       ]);
