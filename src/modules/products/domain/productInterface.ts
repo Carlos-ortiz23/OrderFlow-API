@@ -2,11 +2,14 @@
 
 export interface Product {
   id: string;
+  store_id: string;
+  sku?: string | null;
   name: string;
-  description?: string;
+  description?: string | null;
   price: number;
-  stock: number;
-  unit: string;
-  category?: string;
+  stock_quantity: number;
+  image_url?: string | null;
+  is_active: boolean;
   created_at?: string;
+  updated_at?: string;
 }

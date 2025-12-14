@@ -6,7 +6,7 @@ import { Product } from "../domain/productInterface";
  * Used by store owner to add products to inventory
  */
 export class CreateProductUseCase {
-  constructor(private readonly productRepo: ProductRepository) {}
+  constructor(private readonly productRepo: ProductRepository) { }
 
   async execute(productData: Omit<Product, 'id' | 'created_at'>): Promise<Product> {
     // Validate product data
@@ -18,7 +18,7 @@ export class CreateProductUseCase {
       throw new Error("Price cannot be negative");
     }
 
-    if (productData.stock < 0) {
+    if (productData.stock_quantity < 0) {
       throw new Error("Stock cannot be negative");
     }
 
