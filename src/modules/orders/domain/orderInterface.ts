@@ -10,6 +10,7 @@ export interface OrderItemDetail {
 
 export class Order {
   constructor(
+    public storeId: string,
     public userId: string,
     public items: OrderItemDetail[],
     public total: number,
@@ -19,5 +20,5 @@ export class Order {
       | "shipped"
       | "cancelled" = "pending",
     public id?: string
-  ) {}
+  ) { }
 }

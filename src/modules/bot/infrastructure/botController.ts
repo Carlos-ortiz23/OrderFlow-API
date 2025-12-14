@@ -3,8 +3,13 @@ import { ProcessMessageUseCase } from "../application/processMessageUseCase";
 import { TelegramWebhookValidator } from "./dtos/telegramWebhookDto";
 import { logger } from "../../../utils/logger";
 
+import { ClientService } from "../../clients/application/clientService";
+
 export class BotController {
-  constructor(private readonly processMessageUseCase: ProcessMessageUseCase) {}
+  constructor(
+    private readonly processMessageUseCase: ProcessMessageUseCase,
+    private readonly clientService: ClientService
+  ) { }
 
   /**
    * @swagger
@@ -58,7 +63,13 @@ export class BotController {
    */
   public receiveWebhook = async (req: Request, res: Response) => {
     try {
+      const { storeId } = req.params;
       const update = req.body;
+
+      if (!storeId) {
+        logger.warn("Missing storeId in webhook URL");
+        return res.status(400).json({ error: "Missing storeId" });
+      }
 
       // Validate that the webhook is valid
       if (!TelegramWebhookValidator.isValidUpdate(update)) {
@@ -91,9 +102,25 @@ export class BotController {
       }
 
       // Execute logic without blocking the HTTP response
-      this.processMessageUseCase
-        .run(text, chatId, senderName)
-        .catch((err) => logger.error("Async error processing message", err));
+      (async () => {
+        try {
+          // Find or create client
+          const client = await this.clientService.findOrCreateClient(
+            storeId,
+            parseInt(chatId), // telegram_id
+            {
+              first_name: senderName,
+              // We don't have username/phone in this extracted data yet, 
+              // but we could extract more from update if needed.
+              // For now, minimal info.
+            }
+          );
+
+          await this.processMessageUseCase.run(text, client, storeId);
+        } catch (err) {
+          logger.error("Async error processing message", err);
+        }
+      })();
     } catch (error: any) {
       logger.error("Error in webhook", error);
       if (!res.headersSent) res.sendStatus(500);

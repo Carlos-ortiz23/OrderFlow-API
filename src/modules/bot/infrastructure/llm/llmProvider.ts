@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { envConfig } from "../../../../config/env.config";
+import { supabase } from "../../../../config/supabase";
 import { ProductRepository } from "../../../products/domain/productRepositoryInterface";
 import { Order } from "../../../orders/domain/orderInterface";
 import { ChatMessage } from "../../domain/chatHistoryRepositoryInterface";
@@ -72,7 +73,8 @@ export class LLMProvider {
   async runAgent(
     userId: string,
     userMessage: string,
-    history: ChatMessage[]
+    history: ChatMessage[],
+    storeId: string
   ): Promise<string> {
     // Validate input
     if (!userMessage || userMessage.trim().length === 0) {
@@ -84,9 +86,25 @@ export class LLMProvider {
     const isFirstToday = this.isFirstInteractionToday(history);
     const customerName = this.extractCustomerName(history);
 
-    // Build personalized system prompt
-    let systemPrompt = `You are a professional virtual sales assistant for our store.
+    // Fetch store system prompt
+    const { data: store, error: storeError } = await supabase
+      .from("stores")
+      .select("system_prompt")
+      .eq("id", storeId)
+      .single();
 
+    if (storeError) {
+      logger.error("Error fetching store system prompt", { error: storeError, storeId });
+    }
+
+    // Build personalized system prompt
+    let systemPrompt = store?.system_prompt || `You are a professional virtual sales assistant for our store.`;
+
+    // Append default guidelines if the system prompt is short or missing specific instructions
+    // (Optional: You might want to append these ALWAYS or only if system_prompt is empty. 
+    // For now, let's append the critical business rules to ensure safety even with custom prompts)
+    systemPrompt += `
+    
 SECURITY AND PRIVACY PRINCIPLES:
 - NEVER request sensitive personal information (credit card numbers, passwords, ID documents, social security numbers)
 - NEVER share information about other customers or their orders
@@ -162,7 +180,8 @@ RESPONSE FORMAT:
           const args = JSON.parse(toolCall.function.arguments);
           logger.debug("Agent searching products", { query: args.query, userId });
 
-          const products = await this.productRepo.searchProducts(args.query);
+          // Pass storeId to searchProducts
+          const products = await this.productRepo.searchProducts(args.query, storeId);
           // Give the AI the JSON of the real inventory
           toolResultContent = JSON.stringify(products);
 
@@ -177,7 +196,8 @@ RESPONSE FORMAT:
 
           for (const item of args.items) {
             const product = await this.productRepo.getProductById(
-              item.product_id
+              item.product_id,
+              storeId // Pass storeId to verify ownership
             );
             if (product) {
               total += product.price * item.quantity;
@@ -191,7 +211,7 @@ RESPONSE FORMAT:
           }
 
           if (finalItems.length > 0) {
-            const newOrder = new Order(userId, finalItems, total);
+            const newOrder = new Order(storeId, userId, finalItems, total);
             const orderId = await this.createOrderUseCase.execute(newOrder);
             toolResultContent = JSON.stringify({
               success: true,
@@ -236,13 +256,13 @@ RESPONSE FORMAT:
    */
   private isFirstInteractionToday(history: ChatMessage[]): boolean {
     if (history.length === 0) return true;
-    
+
     const lastMessage = history[history.length - 1];
     if (!lastMessage.created_at) return false;
-    
+
     const lastDate = new Date(lastMessage.created_at);
     const today = new Date();
-    
+
     // Compare dates (ignoring time)
     return lastDate.toDateString() !== today.toDateString();
   }

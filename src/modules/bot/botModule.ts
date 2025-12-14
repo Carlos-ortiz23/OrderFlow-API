@@ -8,9 +8,12 @@ import { webhookRateLimiter } from "../../middlewares/rateLimiter";
 import { ProductModule } from "../products/productModule";
 import { OrderModule } from "../orders/orderModule";
 
+import { ClientModule } from "../clients/clientModule";
+
 // 1. Get repositories from products and orders modules
 const productRepo = ProductModule.repository;
 const createOrderUseCase = OrderModule.createOrderUseCase;
+const clientService = ClientModule.clientService;
 
 // 2. Instantiate chat history repository (belongs to bot)
 const chatHistoryRepo = new SupabaseChatHistoryRepository();
@@ -25,11 +28,11 @@ const aiAgent = new LLMProvider(productRepo, createOrderUseCase);
 const useCase = new ProcessMessageUseCase(telegramProvider, aiAgent, chatHistoryRepo);
 
 // 6. Instantiate Controller and Routes
-const controller = new BotController(useCase);
+const controller = new BotController(useCase, clientService);
 const router = Router();
 
 // Apply rate limiting to the webhook
-router.post("/webhook", webhookRateLimiter, controller.receiveWebhook);
+router.post("/webhook/:storeId", webhookRateLimiter, controller.receiveWebhook);
 
 export class BotModule {
   static get routes(): Router {
