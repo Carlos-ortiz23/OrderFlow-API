@@ -58,6 +58,10 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
       {
         name: 'Orders',
         description: 'Order creation, retrieval, and management operations'
+      },
+      {
+        name: 'Stores',
+        description: 'Store management and retrieval operations'
       }
     ],
     components: {
@@ -183,6 +187,73 @@ Currently, the bot webhook is public. Future versions will include JWT authentic
             }
           },
           required: ['status', 'message']
+        },
+        Store: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique store identifier',
+              example: '123e4567-e89b-12d3-a456-426614174000'
+            },
+            name: {
+              type: 'string',
+              description: 'Store name',
+              example: 'My Coffee Shop'
+            },
+            slug: {
+              type: 'string',
+              description: 'URL friendly slug',
+              example: 'my-coffee-shop'
+            },
+            address: {
+              type: 'string',
+              description: 'Physical address',
+              example: '123 Main St, City'
+            },
+            phone: {
+              type: 'string',
+              description: 'Contact phone number',
+              example: '+1234567890'
+            },
+            is_active: {
+              type: 'boolean',
+              description: 'Store active status',
+              example: true
+            }
+          },
+          required: ['id', 'name', 'slug']
+        },
+        User: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique user identifier'
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'User email address'
+            },
+            full_name: {
+              type: 'string',
+              description: 'Full name of the user'
+            },
+            role: {
+              type: 'string',
+              enum: ['admin', 'manager', 'viewer'],
+              description: 'User role'
+            },
+            store_id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Associated store ID'
+            }
+          },
+          required: ['id', 'email', 'role']
         },
         Product: {
           type: 'object',
