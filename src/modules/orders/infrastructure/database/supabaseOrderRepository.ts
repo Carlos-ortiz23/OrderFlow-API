@@ -19,14 +19,26 @@ export class SupabaseOrderRepository implements OrderRepository {
           .single();
 
         if (error || !product) {
+          logger.error("Product validation failed - Not found", { productId: item.productId, storeId: order.storeId });
           throw new Error(`Product ${item.productName} not found`);
         }
 
         if (product.stock_quantity < item.quantity) {
+          logger.warn("Insufficient stock", {
+            product: product.name,
+            available: product.stock_quantity,
+            requested: item.quantity
+          });
           throw new Error(
             `Insufficient stock for ${item.productName}. Available: ${product.stock_quantity}, Requested: ${item.quantity}`
           );
         }
+
+        logger.info("Stock valid for product", {
+          name: product.name,
+          stock: product.stock_quantity,
+          requested: item.quantity
+        });
 
         // Update item details with snapshot data from DB (Security: don't trust frontend price)
         item.unitPrice = product.price;

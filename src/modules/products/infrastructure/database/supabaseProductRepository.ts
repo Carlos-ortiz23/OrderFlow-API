@@ -6,6 +6,8 @@ import { logger } from "../../../../utils/logger";
 export class SupabaseProductRepository implements ProductRepository {
   // Tool 1: Search products (so the AI knows prices and stock)
   async searchProducts(query: string, storeId: string): Promise<Product[]> {
+    logger.info("Searching products in DB", { query, storeId });
+
     const { data, error } = await supabase
       .from("products")
       .select("*")
@@ -19,6 +21,7 @@ export class SupabaseProductRepository implements ProductRepository {
       return [];
     }
 
+    logger.info("Products found", { count: data?.length || 0, query });
     return data || [];
   }
 
@@ -31,7 +34,22 @@ export class SupabaseProductRepository implements ProductRepository {
       .eq("store_id", storeId) // Verify ownership
       .single();
 
-    if (error) return null;
+    if (error) {
+      logger.error("Error fetching product by ID", { error, id });
+      return null;
+    }
+
+    if (data) {
+      logger.info("Product fetched by ID", {
+        name: data.name,
+        stock: data.stock_quantity,
+        price: data.price,
+        id: data.id
+      });
+    } else {
+      logger.warn("Product not found by ID", { id, storeId });
+    }
+
     return data;
   }
 

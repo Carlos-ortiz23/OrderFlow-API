@@ -3,14 +3,15 @@ import { Order } from "../domain/orderInterface";
 import { logger } from "../../../utils/logger";
 
 export class CreateOrderUseCase {
-  constructor(private readonly orderRepo: OrderRepository) {}
+  constructor(private readonly orderRepo: OrderRepository) { }
 
   async execute(order: Order): Promise<string> {
     try {
-      logger.info("Creating order", { 
-        userId: order.userId, 
+      logger.info("Creating order", {
+        userId: order.userId,
         itemCount: order.items.length,
-        total: order.total 
+        items: order.items.map(i => ({ id: i.productId, qty: i.quantity })),
+        total: order.total
       });
 
       const orderId = await this.orderRepo.createOrder(order);
