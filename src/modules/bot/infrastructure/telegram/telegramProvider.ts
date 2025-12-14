@@ -20,44 +20,60 @@ export class TelegramProvider implements MessagingProvider {
     }
 
     let lastError: any;
-    
+
     // Implement retry logic
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        await axios.post(`${this.apiUrl}/sendMessage`, {
-          chat_id: chatId,
-          text: text,
-          parse_mode: "Markdown",
-        });
-        
-        // If we get here, the message was sent successfully
+        try {
+          // Attempt 1: Try sending with Markdown
+          await axios.post(`${this.apiUrl}/sendMessage`, {
+            chat_id: chatId,
+            text: text,
+            parse_mode: "Markdown",
+          });
+        } catch (markdownError: any) {
+          const isParseError = markdownError.response?.data?.error_code === 400;
+
+          if (isParseError) {
+            logger.warn("Markdown parsing failed, retrying as Plain Text", { chatId });
+            // Attempt 2: Fallback to Plain Text (No parse_mode)
+            await axios.post(`${this.apiUrl}/sendMessage`, {
+              chat_id: chatId,
+              text: text
+              // parse_mode is undefined
+            });
+          } else {
+            throw markdownError; // Re-throw if not a parse error
+          }
+        }
+
+        // If we get here, success!
         if (attempt > 1) {
           logger.info(`Message sent successfully after ${attempt} attempts`, { chatId });
         }
         return;
+
       } catch (error: any) {
         lastError = error;
         const errorMessage = error.response?.data?.description || error.message;
-        
+
         logger.warn(`Error sending message (attempt ${attempt}/${this.maxRetries})`, {
           chatId,
           error: errorMessage,
           attempt
         });
 
-        // If it's not the last attempt, wait before retrying
         if (attempt < this.maxRetries) {
-          await this.sleep(this.retryDelay * attempt); // Exponential backoff
+          await this.sleep(this.retryDelay * attempt);
         }
       }
     }
 
-    // If we get here, all attempts failed
     logger.error("Critical error: Could not send message after multiple attempts", {
       chatId,
-      error: lastError.response?.data || lastError.message
+      error: lastError?.response?.data || lastError?.message
     });
-    
+
     throw new Error(`Could not send message to Telegram after ${this.maxRetries} attempts`);
   }
 
