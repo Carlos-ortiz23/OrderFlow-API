@@ -6,6 +6,8 @@ import { logger } from "../../../../utils/logger";
 export class SupabaseProductRepository implements ProductRepository {
   // Tool 1: Search products (so the AI knows prices and stock)
   async searchProducts(query: string, storeId: string): Promise<Product[]> {
+    logger.info("Searching products in DB", { query, storeId });
+
     const { data, error } = await supabase
       .from("products")
       .select("*")

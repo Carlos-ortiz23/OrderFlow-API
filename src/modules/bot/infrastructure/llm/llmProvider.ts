@@ -206,7 +206,11 @@ RESPONSE FORMAT:
           // --- CASE 2: AI WANTS TO FINALIZE PURCHASE ---
         } else if (toolCall.function.name === "finalize_order") {
           const args = JSON.parse(toolCall.function.arguments);
-          logger.info("Agent finalizing order", { userId, itemCount: args.items.length });
+          logger.info("Agent attempting to finalize order", {
+            userId,
+            itemCount: args.items.length,
+            items: args.items
+          });
 
           // Calculate real totals validating against DB (Security)
           let total = 0;
@@ -266,6 +270,7 @@ RESPONSE FORMAT:
           }
 
           if (finalItems.length > 0) {
+            logger.info("Executing create order use case", { total, itemCount: finalItems.length });
             const newOrder = new Order(storeId, userId, finalItems, total);
             const orderId = await this.createOrderUseCase.execute(newOrder);
             toolResultContent = JSON.stringify({
@@ -274,12 +279,14 @@ RESPONSE FORMAT:
               total_pagado: total,
             });
           } else {
+            logger.error("Order finalization failed - No valid items found", { originalArgs: args });
             toolResultContent = JSON.stringify({
               success: false,
               error: "Invalid products or out of stock",
             });
           }
         }
+
       } else {
         // Handle the case of custom tool calls if necessary
         logger.warn("Unrecognized tool call", { toolCall, userId });
