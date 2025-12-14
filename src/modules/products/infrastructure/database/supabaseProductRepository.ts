@@ -22,6 +22,12 @@ export class SupabaseProductRepository implements ProductRepository {
     }
 
     logger.info("Products found", { count: data?.length || 0, query });
+    if (data && data.length > 0) {
+      logger.info("Product IDs found:", {
+        products: data.map(p => ({ id: p.id, name: p.name, storeId: p.store_id }))
+      });
+    }
+
     return data || [];
   }
 
@@ -34,22 +40,30 @@ export class SupabaseProductRepository implements ProductRepository {
       .eq("store_id", storeId) // Verify ownership
       .single();
 
-    if (error) {
-      logger.error("Error fetching product by ID", { error, id });
+    if (error || !data) {
+      // --- DEEP DIAGNOSTIC CHECK ---
+      // Check if the product exists GLOBALLY (ignoring store_id)
+      // This helps us distinguish between "Invalid ID" and "Wrong Store"
+      const { data: globalData } = await supabase
+        .from("products")
+        .select("store_id, name")
+        .eq("id", id)
+        .single();
+
+      if (globalData) {
+        logger.error("CRITICAL: Product exists but store_id mismatch", {
+          searchedId: id,
+          expectedStore: storeId,
+          actualStore: globalData.store_id,
+          productName: globalData.name
+        });
+      } else {
+        logger.warn("Diagnostic: Product ID does not exist in DB at all", { searchedId: id });
+      }
       return null;
     }
 
-    if (data) {
-      logger.info("Product fetched by ID", {
-        name: data.name,
-        stock: data.stock_quantity,
-        price: data.price,
-        id: data.id
-      });
-    } else {
-      logger.warn("Product not found by ID", { id, storeId });
-    }
-
+    if (error) return null;
     return data;
   }
 

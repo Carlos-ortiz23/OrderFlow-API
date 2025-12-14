@@ -14,7 +14,7 @@ const TOOLS = [
     function: {
       name: "search_products",
       description:
-        "Search for products in the inventory to see prices and stock. Use it ALWAYS when the user asks about a product.",
+        "Search for products in the inventory to see prices and stock. It returns the Product ID (UUID) which is REQUIRED for placing orders.",
       parameters: {
         type: "object",
         properties: {
@@ -43,11 +43,15 @@ const TOOLS = [
               properties: {
                 product_id: {
                   type: "string",
-                  description: "Product ID obtained from search_products",
+                  description: "The 'uuid_id' returned by the 'search_products' tool. Do NOT invent IDs.",
+                },
+                product_name: {
+                  type: "string",
+                  description: "The EXACT name of the product from the search results.",
                 },
                 quantity: { type: "number" },
               },
-              required: ["product_id", "quantity"],
+              required: ["product_id", "product_name", "quantity"],
             },
           },
         },
@@ -125,11 +129,15 @@ BUSINESS RULES:
 3. Before finalizing any order, confirm the total amount and ask: "Would you like to proceed with this purchase?"
 4. Only call 'finalize_order' when the customer explicitly confirms ("yes", "confirm", "proceed", "that's all")
 5. Always present prices clearly with currency symbol
+6. IMPORTANT: When calling 'finalize_order', you MUST use the exact 'id' (UUID) found in the 'search_products' result. DO NOT invent IDs or use product names as IDs.
 
 RESPONSE FORMAT:
 - Product information: "Product: [name] - Price: $[amount] - Available stock: [quantity] units"
 - Order totals: "Order total: $[amount]"
-- Confirmations: "Order confirmed. Order ID: [id]. Total: $[amount]. Thank you for your purchase."`;
+- Confirmations: "Order confirmed. Order ID: [id]. Total: $[amount]. Thank you for your purchase."
+134: 
+135: CRITICAL RULE:
+136: When calling 'finalize_order', you must use the 'uuid_id' provided in the search results. NEVER use the product name. If you use a name like 'papas', the order will fail.`;
 
     // Add personalized greeting for first interaction
     if (isFirstInteraction) {
@@ -182,8 +190,18 @@ RESPONSE FORMAT:
 
           // Pass storeId to searchProducts
           const products = await this.productRepo.searchProducts(args.query, storeId);
+
+          // Enhanced Context Injection: Format the output to force the AI to see the UUIDs
+          const productsForAI = products.map(p => ({
+            uuid_id: p.id, // Explicit label
+            name: p.name,
+            price: p.price,
+            stock: p.stock_quantity,
+            instruction: "USE ONLY THE uuid_id FOR ORDERING"
+          }));
+
           // Give the AI the JSON of the real inventory
-          toolResultContent = JSON.stringify(products);
+          toolResultContent = JSON.stringify(productsForAI);
 
           // --- CASE 2: AI WANTS TO FINALIZE PURCHASE ---
         } else if (toolCall.function.name === "finalize_order") {
@@ -199,10 +217,44 @@ RESPONSE FORMAT:
           let finalItems = [];
 
           for (const item of args.items) {
-            const product = await this.productRepo.getProductById(
-              item.product_id,
+            let productId = item.product_id;
+
+            // --- ID RESOLVER MIDDLEWARE ---
+            // Check if it's a valid UUID
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(productId)) {
+              logger.warn("AI sent invalid UUID, attempting name resolution", { invalidId: productId });
+              // Attempt to find by name
+              const products = await this.productRepo.searchProducts(productId, storeId);
+              if (products && products.length > 0) {
+                // Use the first match
+                productId = products[0].id;
+                logger.info("Resolved invalid ID to UUID", { original: item.product_id, resolved: productId, name: products[0].name });
+              } else {
+                logger.error("Could not resolve invalid ID", { invalidId: item.product_id });
+              }
+            }
+
+            let product = await this.productRepo.getProductById(
+              productId,
               storeId // Pass storeId to verify ownership
             );
+
+            // --- REDUNDANT DATA STRATEGY (Name Fallback) ---
+            // If product is not found by ID, try to find it by name
+            if (!product && item.product_name) {
+              logger.warn("Product ID not found, attempting name resolution", { invalidId: productId, nameFallback: item.product_name });
+              const searchResults = await this.productRepo.searchProducts(item.product_name, storeId);
+
+              // Try to find an exact or close match
+              const match = searchResults.find(p => p.name.toLowerCase() === item.product_name.toLowerCase()) || searchResults[0];
+
+              if (match) {
+                product = match; // Recovered!
+                logger.info("Resolved product by NAME fallback", { originalId: productId, resolvedId: product.id, name: product.name });
+              }
+            }
+
             if (product) {
               total += product.price * item.quantity;
               finalItems.push({
@@ -213,7 +265,7 @@ RESPONSE FORMAT:
               });
               logger.info("Product added to final order list", { productId: product.id, name: product.name });
             } else {
-              logger.warn("Product skipped in final order - not found", { productId: item.product_id });
+              logger.error("Product skipped in final order - VALIDATION FAILED", { productId, name: item.product_name });
             }
           }
 
