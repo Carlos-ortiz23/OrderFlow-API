@@ -206,6 +206,73 @@ export class TagController {
 
   /**
    * @swagger
+   * /api/tags/store/{storeId}:
+   *   get:
+   *     summary: Get tags by store
+   *     description: Retrieve all tags for a specific store
+   *     tags: [Tags]
+   *     parameters:
+   *       - in: path
+   *         name: storeId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Store ID to filter tags
+   *     security:
+   *       - BearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Tags retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Tag'
+   *       400:
+   *         description: Bad request - Missing storeId
+   *       401:
+   *         description: Unauthorized - Not authenticated
+   *       403:
+   *         description: Forbidden - Not authorized to access this store
+   *       500:
+   *         description: Internal server error
+   */
+  getTagsByStore = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { storeId } = req.params;
+
+      if (!storeId) {
+        res.status(400).json({
+          success: false,
+          message: "storeId is required"
+        });
+        return;
+      }
+
+      const tags = await this.getAllTagsUseCase.execute(storeId);
+
+      res.json({
+        success: true,
+        data: tags
+      });
+    } catch (error) {
+      logger.error("Error getting tags by store", { error, storeId: req.params.storeId });
+      res.status(500).json({
+        success: false,
+        message: "Error getting tags"
+      });
+    }
+  };
+
+  /**
+   * @swagger
    * /api/tags/{id}:
    *   put:
    *     summary: Update tag

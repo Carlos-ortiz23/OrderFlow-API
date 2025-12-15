@@ -65,6 +65,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT access token obtained from login or register endpoint
+    BotAuth:
+      type: apiKey
+      in: header
+      name: X-Bot-Token
+      description: Telegram bot token for authentication
 
   responses:
     BadRequest:
@@ -1153,6 +1158,74 @@ paths:
                     items:
                       $ref: '#/components/schemas/Product'
 
+
+  /api/products/store/{storeId}:
+    get:
+      tags:
+        - Products
+      summary: Get products by store
+      description: |
+        Retrieve all products for a specific store using the store ID in the path.
+        Requires authentication and store access verification.
+      operationId: getProductsByStore
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID to filter products
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                      offset:
+                        type: integer
+                      total:
+                        type: integer
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/products/{id}:
     get:
       tags:
@@ -1712,3 +1785,482 @@ paths:
                     example: DEGRADED
                   checks:
                     type: object
+  schemas:
+    # Definición del esquema Product
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        store_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        sku:
+          type: string
+          example: "PROD-001"
+        name:
+          type: string
+          example: "Premium Coffee Beans"
+        description:
+          type: string
+          example: "High-quality arabica coffee beans"
+        price:
+          type: number
+          format: float
+          example: 15.99
+        stock_quantity:
+          type: integer
+          example: 100
+        image_url:
+          type: string
+          format: uri
+          example: "https://example.com/images/coffee-beans.jpg"
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+    
+    # Definición del esquema Order
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        store_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        client_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        status:
+          type: string
+          enum: [pending, processing, completed, cancelled]
+          example: "pending"
+        total_amount:
+          type: number
+          format: float
+          example: 45.97
+        shipping_address:
+          type: string
+          example: "123 Main St, City, Country"
+        payment_method_id:
+          type: integer
+          example: 1
+        ai_summary:
+          type: string
+          example: "Customer requested extra napkins and no utensils"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: string
+                format: uuid
+              product_name:
+                type: string
+              quantity:
+                type: integer
+              unit_price:
+                type: number
+                format: float
+    
+    # Definición del esquema Category
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        store_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Beverages"
+        description:
+          type: string
+          example: "Drinks and liquid refreshments"
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        product_count:
+          type: integer
+          example: 15
+          description: Number of products in this category
+    
+    # Definición del esquema Tag
+    Tag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        store_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Organic"
+        created_at:
+          type: string
+          format: date-time
+        product_count:
+          type: integer
+          example: 8
+          description: Number of products with this tag
+    
+    # Definición del esquema ErrorResponse (si no existe ya)
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error message"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    # Respuestas comunes para errores
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Validation error"
+              errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Resource not found"
+    
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Internal server error"
+  
+  # Definición de los esquemas de seguridad
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+    
+    TelegramBotAuth:
+      type: apiKey
+      in: header
+      name: X-Telegram-Bot-Token
+      description: Telegram bot token for authentication
+  /api/products/{productId}/categories:
+    get:
+      tags:
+        - Products
+      summary: Get categories for a product
+      description: Retrieve all categories assigned to a specific product
+      operationId: getProductCategories
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+  /api/products/{productId}/tags:
+    get:
+      tags:
+        - Products
+      summary: Get tags for a product
+      description: Retrieve all tags assigned to a specific product
+      operationId: getProductTags
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      responses:
+        '200':
+          description: Tags retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+
+  /api/categories/store/{storeId}:
+    get:
+      tags:
+        - Products
+      summary: Get categories by store
+      description: |
+        Retrieve all categories for a specific store.
+        Requires authentication and store access verification.
+      operationId: getCategoriesByStore
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tags/store/{storeId}:
+    get:
+      tags:
+        - Products
+      summary: Get tags by store
+      description: |
+        Retrieve all tags for a specific store.
+        Requires authentication and store access verification.
+      operationId: getTagsByStore
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      responses:
+        '200':
+          description: Tags retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Bot routes
+  /api/bot:
+    get:
+      tags:
+        - Bot
+      summary: Get all products (bot access)
+      description: Retrieve all products for a specific store via bot authentication
+      operationId: getBotProducts
+      security:
+        - BotAuth: []
+      parameters:
+        - name: store_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID to filter products
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+        '401':
+          description: Bot not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/bot/{id}:
+    get:
+      tags:
+        - Bot
+      summary: Get product by ID (bot access)
+      description: Retrieve a specific product by its ID via bot authentication
+      operationId: getBotProductById
+      security:
+        - BotAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
