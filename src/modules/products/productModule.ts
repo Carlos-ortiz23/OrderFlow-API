@@ -123,9 +123,8 @@ const router = Router();
 
 // ===== PRODUCT ROUTES =====
 // Public routes (read-only) - require store_id parameter
-router.get("/", validateRequest(getAllProductsSchema), productController.getAllProducts);
-router.get("/search", validateRequest(searchProductsSchema), productController.searchProducts);
-router.get("/:id", validateRequest(getProductByIdSchema), productController.getProductById);
+router.get("/products", validateRequest(getAllProductsSchema), productController.getAllProducts);
+router.get("/products/search", validateRequest(searchProductsSchema), productController.searchProducts);
 
 // Get products by store (authenticated route)
 router.get("/products/store/:storeId", 
@@ -134,9 +133,12 @@ router.get("/products/store/:storeId",
   productController.getProductsByStore
 );
 
+// Get product by ID
+router.get("/products/:id", validateRequest(getProductByIdSchema), productController.getProductById);
+
 // Protected routes - require authentication and store ownership verification
 // Create product
-router.post("/", 
+router.post("/products", 
   authMiddleware, 
   validateRequest(createProductSchema),
   verifyStoreAccess('store_id'),
