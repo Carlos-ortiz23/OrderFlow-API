@@ -127,6 +127,13 @@ router.get("/products", validateRequest(getAllProductsSchema), productController
 router.get("/products/search", validateRequest(searchProductsSchema), productController.searchProducts);
 router.get("/products/:id", validateRequest(getProductByIdSchema), productController.getProductById);
 
+// Get products by store (authenticated route)
+router.get("/products/store/:storeId", 
+  authMiddleware,
+  verifyStoreAccess,
+  productController.getProductsByStore
+);
+
 // Protected routes - require authentication and store ownership verification
 // Create product
 router.post("/products", 
@@ -161,6 +168,13 @@ router.get("/products/:productId/tags", tagController.getProductTags);
 // ===== CATEGORY ROUTES =====
 // Get all categories
 router.get("/categories", categoryController.getAllCategories);
+
+// Get categories by store (authenticated route)
+router.get("/categories/store/:storeId", 
+  authMiddleware,
+  verifyStoreAccess,
+  categoryController.getCategoriesByStore
+);
 
 // Get category by ID
 router.get("/categories/:id", categoryController.getCategoryById);
@@ -201,6 +215,13 @@ router.delete("/categories/:categoryId/products/:productId",
 // ===== TAG ROUTES =====
 // Get all tags
 router.get("/tags", tagController.getAllTags);
+
+// Get tags by store (authenticated route)
+router.get("/tags/store/:storeId", 
+  authMiddleware,
+  verifyStoreAccess,
+  tagController.getTagsByStore
+);
 
 // Get tag by ID
 router.get("/tags/:id", tagController.getTagById);
