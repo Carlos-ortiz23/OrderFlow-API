@@ -53,8 +53,20 @@ class Server {
     this.app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
       customCss: '.swagger-ui .topbar { display: none }',
       customSiteTitle: 'OrderFlow API Documentation',
-      customfavIcon: '/favicon.ico'
+      customfavIcon: '/favicon.ico',
+      // Force Swagger UI to use the first server in the servers list
+      // This ensures it uses the production URL in production
+      swaggerOptions: {
+        url: "/api/docs/swagger.json",
+        persistAuthorization: true
+      }
     }));
+    
+    // Serve swagger.json directly to ensure correct server URL is used
+    this.app.get('/api/docs/swagger.json', (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.send(swaggerSpec);
+    });
 
     // Health Checks
     this.app.get("/health", HealthController.basic);
@@ -81,8 +93,13 @@ class Server {
     this.app.listen(this.port, () => {
       logger.info(` Server running on port ${this.port}`);
       logger.info(` Environment: ${this.nodeEnv}`);
-      logger.info(` Health check: http://localhost:${this.port}/health`);
-      logger.info(` API Documentation: http://localhost:${this.port}/api/docs`);
+      
+      const baseUrl = envConfig.isProduction() 
+        ? 'https://orderflow-api-831973953542.northamerica-south1.run.app'
+        : `http://localhost:${this.port}`;
+      
+      logger.info(` Health check: ${baseUrl}/health`);
+      logger.info(` API Documentation: ${baseUrl}/api/docs`);
     });
   }
 }
