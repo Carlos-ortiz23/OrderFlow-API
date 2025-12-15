@@ -38,7 +38,7 @@ import { GetTagProductsUseCase } from "./application/tag/getTagProductsUseCase";
 
 import { validateRequest } from "../../middlewares/validateRequest";
 import { authMiddleware } from "../../middlewares/authMiddleware";
-import { verifyStoreAccess, extractStoreIdAndVerifyAccess } from "../../middlewares/storeAuthMiddleware";
+import { verifyStoreAccess } from "../../middlewares/storeAuthMiddleware";
 import { telegramBotAuthMiddleware, telegramBotQueryAuthMiddleware } from "../../middlewares/telegramBotAuthMiddleware";
 import {
   createProductSchema,
@@ -132,7 +132,7 @@ router.get("/products/:id", validateRequest(getProductByIdSchema), productContro
 router.post("/products", 
   authMiddleware, 
   validateRequest(createProductSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   productController.createProduct
 );
 
@@ -140,7 +140,7 @@ router.post("/products",
 router.put("/products/:id", 
   authMiddleware, 
   validateRequest(updateProductSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   productController.updateProduct
 );
 
@@ -148,7 +148,7 @@ router.put("/products/:id",
 router.delete("/products/:id", 
   authMiddleware, 
   validateRequest(deleteProductSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   productController.deleteProduct
 );
 

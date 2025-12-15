@@ -7,7 +7,7 @@ import { NotifyCustomerUseCase } from "./application/notifyCustomerUseCase";
 import { TelegramProvider } from "../bot/infrastructure/telegram/telegramProvider";
 import { validateRequest } from "../../middlewares/validateRequest";
 import { authMiddleware } from "../../middlewares/authMiddleware";
-import { verifyStoreAccess, extractStoreIdAndVerifyAccess } from "../../middlewares/storeAuthMiddleware";
+import { verifyStoreAccess } from "../../middlewares/storeAuthMiddleware";
 import { telegramBotAuthMiddleware } from "../../middlewares/telegramBotAuthMiddleware";
 import {
   getOrderByIdSchema,
@@ -41,14 +41,14 @@ const router = Router();
 router.get("/", 
   authMiddleware, 
   validateRequest(getOrdersSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   controller.getOrders
 );
 
 // Get order statistics
 router.get("/stats", 
   authMiddleware,
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   controller.getStats
 );
 
@@ -56,7 +56,7 @@ router.get("/stats",
 router.get("/:id", 
   authMiddleware,
   validateRequest(getOrderByIdSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   controller.getOrderById
 );
 
@@ -64,7 +64,7 @@ router.get("/:id",
 router.patch("/:id/status", 
   authMiddleware,
   validateRequest(updateOrderStatusSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   controller.updateOrderStatus
 );
 

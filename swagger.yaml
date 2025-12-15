@@ -264,6 +264,163 @@ components:
           type: string
           format: date-time
 
+    # Product Schemas
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        store_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Cappuccino
+        description:
+          type: string
+          example: Classic Italian coffee with steamed milk foam
+        price:
+          type: number
+          format: float
+          example: 4.50
+        stock:
+          type: integer
+          example: 100
+        is_available:
+          type: boolean
+          example: true
+        image_url:
+          type: string
+          format: uri
+          example: https://example.com/images/cappuccino.jpg
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProductRequest:
+      type: object
+      required:
+        - store_id
+        - name
+        - price
+      properties:
+        store_id:
+          type: string
+          format: uuid
+          description: Store ID this product belongs to
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Cappuccino
+        description:
+          type: string
+          example: Classic Italian coffee with steamed milk foam
+        price:
+          type: number
+          format: float
+          minimum: 0
+          example: 4.50
+        stock:
+          type: integer
+          minimum: 0
+          example: 100
+        is_available:
+          type: boolean
+          default: true
+        image_url:
+          type: string
+          format: uri
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        store_id:
+          type: string
+          format: uuid
+          description: Store ID for authorization
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+        is_available:
+          type: boolean
+        image_url:
+          type: string
+          format: uri
+
+    # Order Schemas
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        store_id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, ready, delivered, cancelled]
+          example: pending
+        total:
+          type: number
+          format: float
+          example: 25.50
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        notes:
+          type: string
+          example: No sugar please
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+          example: Cappuccino
+        quantity:
+          type: integer
+          example: 2
+        unit_price:
+          type: number
+          format: float
+          example: 4.50
+        subtotal:
+          type: number
+          format: float
+          example: 9.00
+
     # Generic Response Schemas
     SuccessResponse:
       type: object
@@ -804,6 +961,583 @@ paths:
               example:
                 success: false
                 message: A store with this slug already exists
+
+  # Product Endpoints
+  /api/products/products:
+    get:
+      tags:
+        - Products
+      summary: Get all products
+      description: Retrieve all products for a specific store
+      operationId: getAllProducts
+      parameters:
+        - name: store_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID to filter products
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+
+    post:
+      tags:
+        - Products
+      summary: Create a new product
+      description: Create a new product for a store. Requires authentication and store ownership.
+      operationId: createProduct
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/products/products/search:
+    get:
+      tags:
+        - Products
+      summary: Search products
+      description: Search products by name or description
+      operationId: searchProducts
+      parameters:
+        - name: store_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID to search within
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+  /api/products/products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      description: Retrieve a specific product by its ID
+      operationId: getProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Products
+      summary: Update product
+      description: Update an existing product. Requires authentication and store ownership.
+      operationId: updateProduct
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Products
+      summary: Delete product
+      description: Delete a product. Requires authentication and store ownership.
+      operationId: deleteProduct
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      responses:
+        '200':
+          description: Product deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Product deleted successfully
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Order Endpoints
+  /api/orders:
+    get:
+      tags:
+        - Orders
+      summary: Get all orders
+      description: Retrieve all orders for a specific store. Requires authentication and store ownership.
+      operationId: getOrders
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: store_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID to filter orders
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, preparing, ready, delivered, cancelled]
+          description: Filter by order status
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+      responses:
+        '200':
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/orders/stats:
+    get:
+      tags:
+        - Orders
+      summary: Get order statistics
+      description: Get order statistics for a store. Requires authentication and store ownership.
+      operationId: getOrderStats
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: store_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total_orders:
+                        type: integer
+                      pending_orders:
+                        type: integer
+                      completed_orders:
+                        type: integer
+                      total_revenue:
+                        type: number
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Get order by ID
+      description: Retrieve a specific order by its ID. Requires authentication and store ownership.
+      operationId: getOrderById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Order ID
+        - name: store_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      responses:
+        '200':
+          description: Order found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/orders/{id}/status:
+    patch:
+      tags:
+        - Orders
+      summary: Update order status
+      description: Update the status of an order. Requires authentication and store ownership.
+      operationId: updateOrderStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Order ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+                - store_id
+              properties:
+                status:
+                  type: string
+                  enum: [pending, confirmed, preparing, ready, delivered, cancelled]
+                  description: New order status
+                store_id:
+                  type: string
+                  format: uuid
+                  description: Store ID for authorization
+      responses:
+        '200':
+          description: Order status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order status updated successfully
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Bot Endpoints
+  /api/bot/webhook/{storeId}:
+    post:
+      tags:
+        - Bot
+      summary: Telegram webhook endpoint
+      description: |
+        Receives incoming messages from Telegram for a specific store's bot.
+        This endpoint is called by Telegram when users send messages to the bot.
+        
+        **Note:** This endpoint is rate-limited to 30 requests per minute.
+      operationId: receiveWebhook
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID that owns this bot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Telegram Update object
+              properties:
+                update_id:
+                  type: integer
+                message:
+                  type: object
+                  properties:
+                    message_id:
+                      type: integer
+                    from:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        first_name:
+                          type: string
+                        username:
+                          type: string
+                    chat:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        type:
+                          type: string
+                    text:
+                      type: string
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Too Many Requests
+                  message:
+                    type: string
+                  retryAfter:
+                    type: integer
 
   /health:
     get:

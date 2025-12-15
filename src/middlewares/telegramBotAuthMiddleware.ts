@@ -13,27 +13,25 @@ export interface BotRequest extends Request {
 }
 
 /**
- * Middleware to authenticate Telegram bot webhook requests
- * Verifies the bot token against the store's registered token
+ * Core function to verify bot token against database
+ * Reused by both header and query parameter middlewares
  */
-export const telegramBotAuthMiddleware = async (
+const verifyBotToken = async (
+  botToken: string | undefined,
   req: BotRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
+  source: 'header' | 'query'
 ): Promise<void> => {
   try {
-    // Get bot token from header
-    const botToken = req.headers['x-telegram-bot-token'] as string;
-    
     if (!botToken) {
       res.status(401).json({
         success: false,
-        message: 'Bot token not provided'
+        message: `Bot token not provided${source === 'query' ? ' in query' : ''}`
       });
       return;
     }
 
-    // Find store with matching bot token
     const { data, error } = await supabase
       .from('stores')
       .select('id, name')
@@ -42,7 +40,7 @@ export const telegramBotAuthMiddleware = async (
       .maybeSingle();
 
     if (error) {
-      logger.error('Database error when verifying bot token', { error });
+      logger.error('Database error when verifying bot token', { error, source });
       res.status(500).json({
         success: false,
         message: 'Error verifying bot token'
@@ -58,7 +56,6 @@ export const telegramBotAuthMiddleware = async (
       return;
     }
 
-    // Store information is now available in the request
     req.store = {
       id: data.id,
       name: data.name
@@ -66,7 +63,7 @@ export const telegramBotAuthMiddleware = async (
 
     next();
   } catch (error) {
-    logger.error('Error in Telegram bot authentication middleware', { error });
+    logger.error('Error in Telegram bot authentication middleware', { error, source });
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -75,63 +72,27 @@ export const telegramBotAuthMiddleware = async (
 };
 
 /**
- * Alternative authentication for bot using query parameter
- * This is useful for webhook setup where headers might not be configurable
+ * Middleware to authenticate Telegram bot webhook requests via header
+ * Verifies the bot token against the store's registered token
  */
-export const telegramBotQueryAuthMiddleware = async (
+export const telegramBotAuthMiddleware = (
   req: BotRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  try {
-    // Get bot token from query parameter
-    const botToken = req.query.token as string;
-    
-    if (!botToken) {
-      res.status(401).json({
-        success: false,
-        message: 'Bot token not provided in query'
-      });
-      return;
-    }
+  const botToken = req.headers['x-telegram-bot-token'] as string;
+  return verifyBotToken(botToken, req, res, next, 'header');
+};
 
-    // Find store with matching bot token
-    const { data, error } = await supabase
-      .from('stores')
-      .select('id, name')
-      .eq('telegram_bot_token', botToken)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (error) {
-      logger.error('Database error when verifying bot token', { error });
-      res.status(500).json({
-        success: false,
-        message: 'Error verifying bot token'
-      });
-      return;
-    }
-
-    if (!data) {
-      res.status(401).json({
-        success: false,
-        message: 'Invalid bot token'
-      });
-      return;
-    }
-
-    // Store information is now available in the request
-    req.store = {
-      id: data.id,
-      name: data.name
-    };
-
-    next();
-  } catch (error) {
-    logger.error('Error in Telegram bot query authentication middleware', { error });
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
+/**
+ * Middleware to authenticate Telegram bot via query parameter
+ * Useful for webhook setup where headers might not be configurable
+ */
+export const telegramBotQueryAuthMiddleware = (
+  req: BotRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const botToken = req.query.token as string;
+  return verifyBotToken(botToken, req, res, next, 'query');
 };

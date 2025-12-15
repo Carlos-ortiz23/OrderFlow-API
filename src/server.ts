@@ -49,6 +49,17 @@ class Server {
     // Favicon handler (to avoid 404 logs) response with code 204 (no content).
     this.app.get("/favicon.ico", (req, res) => res.status(204).end());
 
+    // Root route - API welcome message
+    this.app.get("/", (req, res) => {
+      res.json({
+        name: "OrderFlow API",
+        version: "1.0.0",
+        status: "running",
+        documentation: "/api/docs",
+        health: "/health"
+      });
+    });
+
     // API Documentation (Swagger)
     this.app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
       customCss: '.swagger-ui .topbar { display: none }',
