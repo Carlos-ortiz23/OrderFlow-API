@@ -5,7 +5,12 @@ import * as path from 'path';
 import * as yaml from 'js-yaml';
 
 // Load the swagger.yaml file
-const swaggerYamlPath = path.join(__dirname, '..', '..', 'swagger.yaml');
+const swaggerYamlPath = (() => {
+  const cwdPath = path.resolve(process.cwd(), 'swagger.yaml');
+  if (fs.existsSync(cwdPath)) return cwdPath;
+
+  return path.resolve(__dirname, '..', '..', 'swagger.yaml');
+})();
 let swaggerDocument: any;
 
 try {
@@ -44,9 +49,19 @@ try {
 
 const options: swaggerJsdoc.Options = {
   definition: swaggerDocument,
-  apis: envConfig.NODE_ENV === 'production'
-    ? ['./dist/modules/**/*.js', './dist/server.js']
-    : ['./src/modules/**/*.ts', './src/server.ts']
+  apis: (() => {
+    const distModulesGlob = './dist/modules/**/*.js';
+    const distServer = './dist/server.js';
+    const distServerAbs = path.resolve(process.cwd(), distServer);
+
+    // If we are running a compiled build (e.g., in Docker/Cloud Run), prefer dist.
+    // This avoids missing docs when NODE_ENV is set to "development" in production.
+    if (fs.existsSync(distServerAbs)) {
+      return [distModulesGlob, distServer];
+    }
+
+    return ['./src/modules/**/*.ts', './src/server.ts'];
+  })()
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
