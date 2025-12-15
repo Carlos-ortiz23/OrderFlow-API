@@ -963,7 +963,7 @@ paths:
                 message: A store with this slug already exists
 
   # Product Endpoints
-  /api/products/products:
+  /api/products:
     get:
       tags:
         - Products
@@ -1055,7 +1055,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/products/products/search:
+  /api/products/search:
     get:
       tags:
         - Products
@@ -1092,7 +1092,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/Product'
 
-  /api/products/products/{id}:
+  /api/products/{id}:
     get:
       tags:
         - Products
