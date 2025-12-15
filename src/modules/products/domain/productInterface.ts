@@ -1,4 +1,6 @@
 // Data model for a Product
+import { Category } from './categoryInterface';
+import { Tag } from './tagInterface';
 
 export interface Product {
   id: string;
@@ -12,4 +14,6 @@ export interface Product {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+  categories?: Category[];
+  tags?: Tag[];
 }

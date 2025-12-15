@@ -11,7 +11,7 @@ import { OrderModule } from "../orders/orderModule";
 import { ClientModule } from "../clients/clientModule";
 
 // 1. Get repositories from products and orders modules
-const productRepo = ProductModule.repository;
+const productRepo = ProductModule.productRepository;
 const createOrderUseCase = OrderModule.createOrderUseCase;
 const clientService = ClientModule.clientService;
 
