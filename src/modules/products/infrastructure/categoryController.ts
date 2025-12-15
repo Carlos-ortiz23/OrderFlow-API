@@ -210,6 +210,73 @@ export class CategoryController {
 
   /**
    * @swagger
+   * /api/categories/store/{storeId}:
+   *   get:
+   *     summary: Get categories by store
+   *     description: Retrieve all categories for a specific store
+   *     tags: [Categories]
+   *     parameters:
+   *       - in: path
+   *         name: storeId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Store ID to filter categories
+   *     security:
+   *       - BearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Categories retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Category'
+   *       400:
+   *         description: Bad request - Missing storeId
+   *       401:
+   *         description: Unauthorized - Not authenticated
+   *       403:
+   *         description: Forbidden - Not authorized to access this store
+   *       500:
+   *         description: Internal server error
+   */
+  getCategoriesByStore = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { storeId } = req.params;
+
+      if (!storeId) {
+        res.status(400).json({
+          success: false,
+          message: "storeId is required"
+        });
+        return;
+      }
+
+      const categories = await this.getAllCategoriesUseCase.execute(storeId);
+
+      res.json({
+        success: true,
+        data: categories
+      });
+    } catch (error) {
+      logger.error("Error getting categories by store", { error, storeId: req.params.storeId });
+      res.status(500).json({
+        success: false,
+        message: "Error getting categories"
+      });
+    }
+  };
+
+  /**
+   * @swagger
    * /api/categories/{id}:
    *   put:
    *     summary: Update category

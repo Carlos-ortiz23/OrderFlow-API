@@ -60,6 +60,13 @@ router.get("/:id",
   controller.getOrderById
 );
 
+// Get orders by store
+router.get("/store/:storeId", 
+  authMiddleware,
+  verifyStoreAccess,
+  controller.getOrdersByStore
+);
+
 // Update order status
 router.patch("/:id/status", 
   authMiddleware,

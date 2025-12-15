@@ -66,17 +66,25 @@ export class OrderController {
    */
   getOrders = async (req: Request, res: Response) => {
     try {
-      const { status, limit = 50, offset = 0 } = req.query;
+      const { status, limit = 50, offset = 0, storeId } = req.query;
+
+      if (!storeId || typeof storeId !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "storeId is required",
+        });
+      }
 
       let orders;
       if (status && typeof status === "string") {
         orders = await this.orderRepo.getOrdersByStatus(
           status,
           Number(limit),
-          Number(offset)
+          Number(offset),
+          storeId
         );
       } else {
-        orders = await this.orderRepo.getAllOrders(Number(limit), Number(offset));
+        orders = await this.orderRepo.getAllOrders(Number(limit), Number(offset), storeId);
       }
 
       res.json({
@@ -90,6 +98,115 @@ export class OrderController {
       });
     } catch (error) {
       logger.error("Error in getOrders", { error });
+      res.status(500).json({
+        success: false,
+        error: "Error getting orders",
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/orders/store/{storeId}:
+   *   get:
+   *     summary: Get orders by store
+   *     description: Retrieve all orders for a specific store with optional status filter and pagination
+   *     tags: [Orders]
+   *     parameters:
+   *       - in: path
+   *         name: storeId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Store ID to filter orders
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: string
+   *           enum: [pending, confirmed, preparing, in_transit, delivered, cancelled]
+   *         description: Filter orders by status
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 50
+   *         description: Maximum number of orders to return
+   *       - in: query
+   *         name: offset
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: Number of orders to skip
+   *     security:
+   *       - BearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Orders retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Order'
+   *                 pagination:
+   *                   type: object
+   *                   properties:
+   *                     limit:
+   *                       type: integer
+   *                     offset:
+   *                       type: integer
+   *                     total:
+   *                       type: integer
+   *       400:
+   *         description: Bad request - Missing storeId
+   *       401:
+   *         description: Unauthorized - Not authenticated
+   *       403:
+   *         description: Forbidden - Not authorized to access this store
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  getOrdersByStore = async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const { status, limit = 50, offset = 0 } = req.query;
+
+      if (!storeId) {
+        return res.status(400).json({
+          success: false,
+          error: "storeId is required",
+        });
+      }
+
+      let orders;
+      if (status && typeof status === "string") {
+        orders = await this.orderRepo.getOrdersByStatus(
+          status,
+          Number(limit),
+          Number(offset),
+          storeId
+        );
+      } else {
+        orders = await this.orderRepo.getAllOrders(Number(limit), Number(offset), storeId);
+      }
+
+      res.json({
+        success: true,
+        data: orders,
+        pagination: {
+          limit: Number(limit),
+          offset: Number(offset),
+          total: orders.length,
+        },
+      });
+    } catch (error) {
+      logger.error("Error in getOrdersByStore", { error, storeId: req.params.storeId });
       res.status(500).json({
         success: false,
         error: "Error getting orders",
