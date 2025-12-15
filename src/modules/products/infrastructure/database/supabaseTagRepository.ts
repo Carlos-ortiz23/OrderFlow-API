@@ -219,7 +219,6 @@ export class SupabaseTagRepository implements TagRepository {
           description,
           price,
           stock_quantity,
-          image_url,
           is_active
         `)
         .eq("is_active", true)

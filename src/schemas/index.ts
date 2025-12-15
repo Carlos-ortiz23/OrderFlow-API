@@ -57,7 +57,6 @@ export const ProductSchema = z.object({
     description: z.string().nullable().optional(),
     price: z.number().min(0),
     stock_quantity: z.number().int().min(0).default(0),
-    image_url: z.string().nullable().optional(),
     is_active: z.boolean().default(true),
     created_at: z.string().datetime().optional(),
     updated_at: z.string().datetime().optional(),

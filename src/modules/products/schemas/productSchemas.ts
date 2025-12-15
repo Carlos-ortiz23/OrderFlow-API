@@ -55,6 +55,7 @@ export const deleteProductSchema = z.object({
 export const searchProductsSchema = z.object({
   query: z.object({
     q: z.string().min(1, "Search query is required"),
+    storeId: z.string().uuid("Invalid store ID format"),
   }),
 });
 
@@ -65,5 +66,6 @@ export const getAllProductsSchema = z.object({
   query: z.object({
     limit: z.string().regex(/^\d+$/, "Limit must be a number").optional(),
     offset: z.string().regex(/^\d+$/, "Offset must be a number").optional(),
+    storeId: z.string().uuid("Invalid store ID format"),
   }),
 });

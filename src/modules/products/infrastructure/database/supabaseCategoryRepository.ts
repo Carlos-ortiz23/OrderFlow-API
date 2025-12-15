@@ -224,7 +224,6 @@ export class SupabaseCategoryRepository implements CategoryRepository {
           description,
           price,
           stock_quantity,
-          image_url,
           is_active
         `)
         .eq("is_active", true)
