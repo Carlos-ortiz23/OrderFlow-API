@@ -120,6 +120,13 @@ LLM_URL=https://api.deepseek.com
 # Telegram
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 
+# Telegram Bot Creation (MTProto API)
+# Obtén estas credenciales en https://my.telegram.org/apps
+# Genera la sesión con: node scripts/generate-telegram-session.js
+TELEGRAM_API_ID=your_api_id_here
+TELEGRAM_API_HASH=your_api_hash_here
+TELEGRAM_SESSION=your_session_string_here
+
 # Authentication (IMPORTANT: Change these in production!)
 JWT_SECRET=your_super_secret_jwt_key_here_change_this_in_production_min_32_chars
 JWT_ACCESS_TOKEN_EXPIRATION=15m
@@ -213,11 +220,14 @@ Order management and processing.
 | PATCH | `/api/orders/:id/status` | Update order status | Yes (Admin) |
 
 ### 🤖 Bot
-Telegram bot webhook.
+Telegram bot webhook and bot creation endpoints.
 
-| Method | Endpoint | Description | Rate Limit |
-|--------|----------|-------------|------------|
-| POST | `/api/bot/webhook` | Receive Telegram messages | 30 req/min |
+| Method | Endpoint | Description | Auth Required | Rate Limit |
+|--------|----------|-------------|---------------|------------|
+| POST | `/api/bot/webhook/:storeId` | Receive Telegram messages | No | 30 req/min |
+| POST | `/api/bot/create` | Create Telegram bot automatically | Yes (Owner) | - |
+
+> **Note:** For more information about the automatic bot creation feature, see [Telegram Bot Creation Documentation](./docs/telegram-bot-creation.md)
 
 ### ❤️ Health
 System health monitoring.

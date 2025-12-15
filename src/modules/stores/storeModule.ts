@@ -16,3 +16,9 @@ storeRouter.put("/:id", authMiddleware, storeController.updateStore);
 storeRouter.delete("/:id", authMiddleware, storeController.deleteStore);
 
 export { storeRouter };
+
+export class StoreModule {
+  static get storeRepository() {
+    return storeRepository;
+  }
+}
