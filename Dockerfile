@@ -27,6 +27,9 @@ RUN npm install --production --silent && rm -rf /root/.npm
 # Copy built artifacts from the builder stage
 COPY --from=builder /app/dist ./dist
 
+# Include Swagger spec file (needed at runtime)
+COPY --from=builder /app/swagger.yaml ./swagger.yaml
+
 # Ensure app directory owned by `node` to avoid permission issues on Cloud Run
 RUN chown -R node:node /app
 # Use non-root user provided by the image
