@@ -373,7 +373,7 @@ When calling 'finalize_order', you must include ALL required fields: items with 
               success: false,
               error: "Shipping address is required"
             });
-            return;
+            return "I need a shipping address to complete your order. Could you please provide your delivery address?";
           }
           
           // Validate payment method
@@ -383,7 +383,7 @@ When calling 'finalize_order', you must include ALL required fields: items with 
               success: false,
               error: "Payment method is required"
             });
-            return;
+            return "I need a payment method to complete your order. Could you please select one of the available payment methods?";
           }
           
           // Verify payment method exists
@@ -399,7 +399,7 @@ When calling 'finalize_order', you must include ALL required fields: items with 
               success: false,
               error: "Invalid payment method"
             });
-            return;
+            return "I'm sorry, but the payment method you selected is not valid. Please choose a valid payment method and try again.";
           }
 
           // Calculate real totals validating against DB (Security)
