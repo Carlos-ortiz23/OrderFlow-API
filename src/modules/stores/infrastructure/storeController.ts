@@ -76,14 +76,7 @@ export class StoreController {
                 return;
             }
 
-            // Validate telegram_bot_token is provided
-            if (!telegram_bot_token) {
-                res.status(400).json({
-                    success: false,
-                    message: "Telegram bot token is required"
-                });
-                return;
-            }
+            // El token de Telegram ya no es requerido, se generará automáticamente después
 
             const storeData: CreateStoreData = {
                 name,
