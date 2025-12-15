@@ -20,6 +20,12 @@ class EnvironmentConfig {
   public readonly LLM_URL: string;
   // Telegram
   public readonly TELEGRAM_BOT_TOKEN: string;
+  
+  // Authentication
+  public readonly JWT_SECRET: string;
+  public readonly JWT_ACCESS_TOKEN_EXPIRATION: string;
+  public readonly JWT_REFRESH_TOKEN_EXPIRATION: string;
+  public readonly BCRYPT_SALT_ROUNDS: number;
 
   constructor() {
     // Validate and assign environment variables
@@ -33,6 +39,10 @@ class EnvironmentConfig {
     this.LLM_MODEL = this.getRequiredEnvVar("LLM_MODEL");
     this.LLM_URL = this.getRequiredEnvVar("LLM_URL");
     this.TELEGRAM_BOT_TOKEN = this.getRequiredEnvVar("TELEGRAM_BOT_TOKEN");
+    this.JWT_SECRET = this.getRequiredEnvVar("JWT_SECRET");
+    this.JWT_ACCESS_TOKEN_EXPIRATION = process.env.JWT_ACCESS_TOKEN_EXPIRATION || "15m";
+    this.JWT_REFRESH_TOKEN_EXPIRATION = process.env.JWT_REFRESH_TOKEN_EXPIRATION || "1h";
+    this.BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
   }
 
   /**

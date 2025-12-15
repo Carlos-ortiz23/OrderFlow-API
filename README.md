@@ -25,26 +25,54 @@ The system maintains conversation context, validates stock availability in real-
 - **Health Module**: API and external services status monitoring
 - **Validation Module**: Automatic request validation with Zod schemas
 
+### ✅ Recently Completed:
+- **Authentication Module**: JWT-based authentication with refresh tokens
+- **Stores Module**: Multi-store management for owners
+- **Role-Based Access Control**: Owner, admin, manager, and viewer roles
+
 ### 🚧 In Development:
-- **Authentication Module**: Authentication and authorization system for API security
 - **Admin Dashboard**: Administration panel for product and order management
+- **Payment Integration**: Payment gateway integration
+- **Analytics Module**: Sales and performance analytics
 
 ## 🚀 Features
 
+### Core Features
 - ✅ **Clean Architecture**: Clear separation between domain, application, and infrastructure
+- ✅ **SOLID Principles**: Single Responsibility, Dependency Inversion, and more
 - ✅ **TypeScript**: Strong typing for better security and maintainability
 - ✅ **Dependency Injection**: Facilitates testing and implementation changes
 - ✅ **Conversational AI**: Natural language processing with LLM providers (OpenAI, DeepSeek, Groq, etc.)
-- ✅ **Data Validation**: Automatic request validation with Zod schemas
-- ✅ **Error Handling**: Global middleware with structured logging and process error handlers
+
+### Security & Authentication
+- ✅ **JWT Authentication**: Secure token-based authentication with refresh tokens
+- ✅ **Role-Based Access Control (RBAC)**: Owner, admin, manager, and viewer roles
+- ✅ **Password Hashing**: Bcrypt with configurable salt rounds
+- ✅ **Token Expiration**: Configurable access (15m) and refresh (1h) token lifetimes
+- ✅ **Security Headers**: Helmet, CORS, and environment variables validation
 - ✅ **Rate Limiting**: Protection against abuse and DDoS attacks
+
+### Data & Validation
+- ✅ **Data Validation**: Automatic request validation with Zod schemas
+- ✅ **Custom Error Handling**: Structured error responses with proper HTTP codes
+- ✅ **Input Sanitization**: Email and password validation
+- ✅ **Transactions**: Transaction handling with automatic rollback
+
+### Monitoring & Logging
 - ✅ **Health Checks**: External services verification (Supabase, LLM, Telegram)
 - ✅ **Professional Logging**: Log system with levels (debug, info, warn, error)
-- ✅ **Security**: Helmet, CORS, environment variables validation
-- ✅ **Retry Logic**: Automatic retries on external API calls
-- ✅ **Transactions**: Transaction handling with automatic rollback
+- ✅ **Error Tracking**: Global middleware with structured logging
+
+### API & Documentation
+- ✅ **RESTful API**: Well-structured REST endpoints
 - ✅ **API Documentation**: Professional Swagger/OpenAPI documentation
+- ✅ **Retry Logic**: Automatic retries on external API calls
 - ✅ **Privacy & Security**: Bot follows strict data protection principles
+
+### Multi-Store Management
+- ✅ **Store Management**: Owners can manage multiple stores from one account
+- ✅ **Store CRUD**: Create, read, update, and delete stores
+- ✅ **Store Authorization**: Owners can only manage their own stores
 
 ## Prerequisites
 
@@ -69,6 +97,11 @@ npm install
 
 3. **Configure environment variables**
 
+Create a `.env` file based on `.env.example`:
+```bash
+cp .env.example .env
+```
+
 Edit the `.env` file with your credentials:
 ```env
 # Server
@@ -87,9 +120,22 @@ LLM_URL=https://api.deepseek.com
 # Telegram
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 
+# Authentication (IMPORTANT: Change these in production!)
+JWT_SECRET=your_super_secret_jwt_key_here_change_this_in_production_min_32_chars
+JWT_ACCESS_TOKEN_EXPIRATION=15m
+JWT_REFRESH_TOKEN_EXPIRATION=1h
+BCRYPT_SALT_ROUNDS=10
 ```
 
-4. **Build the project**
+4. **Set up the database**
+
+Run the database migrations in Supabase:
+```bash
+# Execute the SQL scripts in database/migrations/ in order
+# 001_add_authentication.sql - Creates users and authentication tables
+```
+
+5. **Build the project**
 ```bash
 npm run build
 ```
@@ -120,126 +166,145 @@ The documentation includes:
 - Error responses and status codes
 - Interactive testing interface
 
-##  Endpoints
+##  API Endpoints
 
-### Health Checks
+### 🔐 Authentication
+All authentication endpoints are public except `/profile` which requires a Bearer token.
 
-#### GET `/health`
-Basic health check
-```json
-{
-  "status": "OK",
-  "service": "OrderFlow API",
-  "timestamp": "2024-12-04T...",
-  "environment": "development"
-}
-```
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/auth/register` | Register a new user (owner) | No |
+| POST | `/api/auth/login` | Login and get tokens | No |
+| POST | `/api/auth/refresh` | Refresh access token | No |
+| POST | `/api/auth/verify` | Verify token validity | No |
+| GET | `/api/auth/profile` | Get user profile | Yes |
 
-#### GET `/health/detailed`
-Detailed health check with service verification
-```json
-{
-  "status": "OK",
-  "service": "OrderFlow API",
-  "checks": {
-    "api": { "status": "OK" },
-    "supabase": { "status": "OK" },
-    "llm": { "status": "OK" },
-    "telegram": { "status": "OK" }
-  }
-}
-```
+### 🏪 Stores
+Store management endpoints for multi-store owners.
 
-### Bot
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/stores/:id` | Get store by ID | No |
+| GET | `/api/stores/my-stores` | Get all stores owned by user | Yes (Owner) |
+| POST | `/api/stores` | Create a new store | Yes (Owner) |
+| PUT | `/api/stores/:id` | Update store information | Yes (Owner) |
+| DELETE | `/api/stores/:id` | Delete a store | Yes (Owner) |
 
-#### POST `/api/bot/webhook`
-Webhook to receive Telegram messages
-- Rate limit: 30 requests/minute per IP
-- Automatic data validation
-- Asynchronous processing
-- Ignores Telegram commands (e.g., /start, /help)
+### 📦 Products
+Product inventory management.
 
-### Products
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/products` | Get all products (paginated) | No |
+| GET | `/api/products/:id` | Get product by ID | No |
+| GET | `/api/products/search?q=query` | Search products by name | No |
+| POST | `/api/products` | Create a new product | Yes (Admin) |
+| PUT | `/api/products/:id` | Update product | Yes (Admin) |
+| DELETE | `/api/products/:id` | Delete product | Yes (Admin) |
 
-#### GET `/api/products`
-Get all products with pagination
-- Query params: `limit`, `offset`
+### 🛒 Orders
+Order management and processing.
 
-#### POST `/api/products`
-Create a new product (Admin)
-- Body: `name`, `price`, `stock`, `unit`, `category` (optional), `description` (optional)
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/orders` | Get all orders (filtered) | Yes |
+| GET | `/api/orders/:id` | Get order by ID | Yes |
+| GET | `/api/orders/stats` | Get order statistics | Yes |
+| PATCH | `/api/orders/:id/status` | Update order status | Yes (Admin) |
 
-#### GET `/api/products/search?q=query`
-Search products by name
+### 🤖 Bot
+Telegram bot webhook.
 
-#### GET `/api/products/:id`
-Get product details by ID
+| Method | Endpoint | Description | Rate Limit |
+|--------|----------|-------------|------------|
+| POST | `/api/bot/webhook` | Receive Telegram messages | 30 req/min |
 
-#### PUT `/api/products/:id`
-Update product information (Admin)
+### ❤️ Health
+System health monitoring.
 
-#### DELETE `/api/products/:id`
-Delete a product (Admin)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Basic health check |
+| GET | `/health/detailed` | Detailed service checks |
 
-### Orders
+**📚 Complete Documentation:** Visit `/api/docs` for interactive Swagger documentation with request/response examples.
 
-#### GET `/api/orders`
-Get all orders with optional filters
-- Query params: `status`, `limit`, `offset`
+## 🏗️ Architecture
 
-#### GET `/api/orders/:id`
-Get order details by ID
-
-#### PATCH `/api/orders/:id/status`
-Update order status (sends automatic notification to customer)
-- Body: `status` (pending, confirmed, in_transit)
-- Triggers automatic Telegram notification to customer
-
-#### GET `/api/orders/stats`
-Get order statistics
-
-**Note:** For complete endpoint documentation with examples, visit `/api/docs`
-
-## Architecture
-
+### Project Structure
 ```
 src/
-├── config/                 # Centralized configuration
-│   ├── env.config.ts      # Environment variables validation
-│   ├── swagger.config.ts  # Swagger/OpenAPI configuration
-│   └── supabase.ts        # Supabase client
-├── middlewares/           # Express middlewares
-│   ├── errorHandler.ts    # Global error handling
-│   ├── rateLimiter.ts     # Rate limiting
-│   ├── requestLogger.ts   # Request logging
-│   └── validateRequest.ts # Zod schema validation
-├── modules/               # Independent modules (Hexagonal Architecture)
-│   ├── bot/               # Chatbot module
-│   │   ├── application/   # Use cases
-│   │   ├── domain/        # Entities and interfaces
-│   │   └── infrastructure/# Telegram, LLM, DB
-│   ├── products/          # Products module
-│   │   ├── application/   # Use cases (CRUD operations)
-│   │   ├── domain/        # Entities and interfaces
-│   │   ├── infrastructure/# Repositories and controllers
-│   │   └── schemas/       # Zod validation schemas
-│   ├── orders/            # Orders module
-│   │   ├── application/   # Use cases (including notifications)
-│   │   ├── domain/        # Entities and interfaces
-│   │   ├── infrastructure/# Repositories and controllers
-│   │   └── schemas/       # Zod validation schemas
-│   └── health/            # Health checks
-├── utils/                 # Utilities
-│   └── logger.ts          # Logging system
-└── server.ts              # Entry point
+├── config/                      # Centralized configuration
+│   ├── env.config.ts           # Environment variables validation
+│   ├── swagger.config.ts       # Swagger/OpenAPI configuration
+│   └── supabase.ts             # Supabase client
+├── middlewares/                # Express middlewares
+│   ├── authMiddleware.ts       # JWT authentication & authorization
+│   ├── errorHandler.ts         # Global error handling
+│   ├── rateLimiter.ts          # Rate limiting
+│   ├── requestLogger.ts        # Request logging
+│   └── validateRequest.ts      # Zod schema validation
+├── modules/                    # Independent modules (Hexagonal Architecture)
+│   ├── auth/                   # Authentication module
+│   │   ├── application/        # Use cases (AuthService)
+│   │   ├── domain/             # Entities, interfaces, validators
+│   │   │   ├── errors/         # Custom error classes
+│   │   │   ├── services/       # Service interfaces
+│   │   │   └── validators/     # Input validators
+│   │   └── infrastructure/     # Implementations
+│   │       ├── database/       # Supabase repository
+│   │       ├── services/       # Bcrypt, JWT services
+│   │       └── authController.ts
+│   ├── stores/                 # Multi-store management
+│   │   ├── application/        # Use cases
+│   │   ├── domain/             # Entities and interfaces
+│   │   └── infrastructure/     # Repositories and controllers
+│   ├── bot/                    # Chatbot module
+│   │   ├── application/        # Use cases
+│   │   ├── domain/             # Entities and interfaces
+│   │   └── infrastructure/     # Telegram, LLM, DB
+│   ├── products/               # Products module
+│   │   ├── application/        # Use cases (CRUD operations)
+│   │   ├── domain/             # Entities and interfaces
+│   │   ├── infrastructure/     # Repositories and controllers
+│   │   └── schemas/            # Zod validation schemas
+│   ├── orders/                 # Orders module
+│   │   ├── application/        # Use cases (including notifications)
+│   │   ├── domain/             # Entities and interfaces
+│   │   ├── infrastructure/     # Repositories and controllers
+│   │   └── schemas/            # Zod validation schemas
+│   └── health/                 # Health checks
+├── utils/                      # Utilities
+│   └── logger.ts               # Logging system
+└── server.ts                   # Entry point
 ```
 
 ### Applied Principles
 
+#### SOLID Principles
+- **Single Responsibility (SRP)**: Each class has one reason to change
+  - `AuthService`: Business logic
+  - `BcryptPasswordHasher`: Password hashing
+  - `JwtTokenService`: Token management
+  - `AuthValidator`: Input validation
+  
+- **Open/Closed (OCP)**: Open for extension, closed for modification
+  - Interfaces allow new implementations without changing existing code
+  
+- **Liskov Substitution (LSP)**: Implementations can replace interfaces
+  - `IPasswordHasher` can be Bcrypt, Argon2, or any other implementation
+  
+- **Interface Segregation (ISP)**: Specific, focused interfaces
+  - `IPasswordHasher`, `ITokenService`, `IAuthValidator` are separate
+  
+- **Dependency Inversion (DIP)**: Depend on abstractions, not concretions
+  - Services receive interfaces via dependency injection
+
+#### Architectural Patterns
 - **Clean Architecture**: Layer separation (domain, application, infrastructure)
 - **Hexagonal Architecture**: Independent modules that communicate through interfaces
-- **Dependency Inversion**: Dependencies point towards abstractions
-- **Single Responsibility**: Each module has a single responsibility
+- **Repository Pattern**: Data access abstraction
+- **Dependency Injection**: Loose coupling and testability
 
 ##  Automatic Notifications
 

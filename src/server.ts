@@ -9,6 +9,7 @@ import { ProductModule } from "./modules/products/productModule";
 import { OrderModule } from "./modules/orders/orderModule";
 import { storeRouter } from "./modules/stores/storeModule";
 import { userRouter } from "./modules/users/userModule";
+import { authRouter } from "./modules/auth/authModule";
 import { HealthController } from "./modules/health/healthController";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/requestLogger";
@@ -60,11 +61,12 @@ class Server {
     this.app.get("/health/detailed", HealthController.detailed);
 
     // Modules (Hexagonal architecture - each module is independent)
+    this.app.use("/api/auth", authRouter);
     this.app.use("/api/bot", BotModule.routes);
     this.app.use("/api/products", ProductModule.routes);
     this.app.use("/api/orders", OrderModule.routes);
     this.app.use("/api/stores", storeRouter);
-    this.app.use("/api/users", userRouter); // Mostly internal or future use
+    this.app.use("/api/users", userRouter);
   }
 
   private errorHandlers() {
