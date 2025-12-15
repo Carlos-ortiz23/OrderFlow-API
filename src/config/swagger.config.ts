@@ -18,16 +18,27 @@ try {
   swaggerDocument = yaml.load(fileContents);
   
   // Update server URLs dynamically
-  swaggerDocument.servers = [
-    {
-      url: `http://localhost:${envConfig.PORT}`,
-      description: 'Development server'
-    },
-    {
-      url: 'https://orderflow-api-831973953542.northamerica-south1.run.app',
-      description: 'Production server'
-    }
-  ];
+  swaggerDocument.servers = envConfig.isProduction() 
+    ? [
+        {
+          url: 'https://orderflow-api-831973953542.northamerica-south1.run.app',
+          description: 'Production server'
+        },
+        {
+          url: `http://localhost:${envConfig.PORT}`,
+          description: 'Development server'
+        }
+      ]
+    : [
+        {
+          url: `http://localhost:${envConfig.PORT}`,
+          description: 'Development server'
+        },
+        {
+          url: 'https://orderflow-api-831973953542.northamerica-south1.run.app',
+          description: 'Production server'
+        }
+      ];
 } catch (error) {
   console.error('Error loading swagger.yaml:', error);
   // Fallback to basic configuration
@@ -38,12 +49,27 @@ try {
       version: '1.0.0',
       description: 'Professional REST API for conversational commerce through Telegram bot with AI-powered order processing.'
     },
-    servers: [
-      {
-        url: `http://localhost:${envConfig.PORT}`,
-        description: 'Development server'
-      }
-    ]
+    servers: envConfig.isProduction()
+      ? [
+          {
+            url: 'https://orderflow-api-831973953542.northamerica-south1.run.app',
+            description: 'Production server'
+          },
+          {
+            url: `http://localhost:${envConfig.PORT}`,
+            description: 'Development server'
+          }
+        ]
+      : [
+          {
+            url: `http://localhost:${envConfig.PORT}`,
+            description: 'Development server'
+          },
+          {
+            url: 'https://orderflow-api-831973953542.northamerica-south1.run.app',
+            description: 'Production server'
+          }
+        ]
   };
 }
 
