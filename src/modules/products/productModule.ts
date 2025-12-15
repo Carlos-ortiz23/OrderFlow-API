@@ -127,7 +127,7 @@ router.get("/products", validateRequest(getAllProductsSchema), productController
 router.get("/products/search", validateRequest(searchProductsSchema), productController.searchProducts);
 
 // Get products by store (authenticated route)
-router.get("/products/store/:storeId", 
+router.get("/store/:storeId", 
   authMiddleware,
   verifyStoreAccess,
   productController.getProductsByStore
@@ -146,7 +146,7 @@ router.post("/products",
 );
 
 // Update product
-router.put("/:id", 
+router.put("/products/:id", 
   authMiddleware, 
   validateRequest(updateProductSchema),
   verifyStoreAccess('store_id'),
@@ -154,7 +154,7 @@ router.put("/:id",
 );
 
 // Delete product
-router.delete("/:id", 
+router.delete("/products/:id", 
   authMiddleware, 
   validateRequest(deleteProductSchema),
   verifyStoreAccess('store_id'),
@@ -162,10 +162,10 @@ router.delete("/:id",
 );
 
 // Get product categories
-router.get("/:productId/categories", categoryController.getProductCategories);
+router.get("/products/:productId/categories", categoryController.getProductCategories);
 
 // Get product tags
-router.get("/:productId/tags", tagController.getProductTags);
+router.get("/products/:productId/tags", tagController.getProductTags);
 
 // ===== CATEGORY ROUTES =====
 // Get all categories
