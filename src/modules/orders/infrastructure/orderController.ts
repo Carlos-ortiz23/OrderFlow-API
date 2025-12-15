@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { OrderRepository } from "../domain/orderRepositoryInterface";
 import { UpdateOrderStatusUseCase } from "../application/updateOrderStatusUseCase";
 import { NotifyCustomerUseCase } from "../application/notifyCustomerUseCase";
+import { Order } from "../domain/orderInterface";
 import { logger } from "../../../utils/logger";
 
 export class OrderController {
@@ -350,6 +351,69 @@ export class OrderController {
       res.status(500).json({
         success: false,
         error: "Error getting statistics",
+      });
+    }
+  };
+
+  /**
+   * Create an order from the Telegram bot webhook
+   * This endpoint is specifically for bot-initiated orders
+   */
+  createOrderFromBot = async (req: Request, res: Response) => {
+    try {
+      // Get store information from the bot authentication middleware
+      const botReq = req as { store?: { id: string; name: string } };
+      const storeId = botReq.store?.id;
+      
+      if (!storeId) {
+        return res.status(400).json({
+          success: false,
+          error: "Store ID not found in request"
+        });
+      }
+
+      // Extract order data from request body
+      const { clientId, items, shippingAddress, aiSummary } = req.body;
+
+      if (!clientId || !items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order data. Required: clientId and items array"
+        });
+      }
+
+      // Calculate total from items
+      const orderItems = items.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice
+      }));
+      
+      const total = orderItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+
+      // Create the order object according to the Order class
+      const order = new Order(
+        storeId,
+        clientId,
+        orderItems,
+        total,
+        "pending"
+      );
+
+      // Create the order using repository
+      const newOrder = await this.orderRepo.createOrder(order);
+
+      res.status(201).json({
+        success: true,
+        data: newOrder,
+        message: "Order created successfully"
+      });
+    } catch (error: unknown) {
+      logger.error("Error in createOrderFromBot", { error });
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Error creating order from bot"
       });
     }
   };

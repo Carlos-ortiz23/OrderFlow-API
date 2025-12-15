@@ -6,6 +6,9 @@ import { UpdateOrderStatusUseCase } from "./application/updateOrderStatusUseCase
 import { NotifyCustomerUseCase } from "./application/notifyCustomerUseCase";
 import { TelegramProvider } from "../bot/infrastructure/telegram/telegramProvider";
 import { validateRequest } from "../../middlewares/validateRequest";
+import { authMiddleware } from "../../middlewares/authMiddleware";
+import { verifyStoreAccess, extractStoreIdAndVerifyAccess } from "../../middlewares/storeAuthMiddleware";
+import { telegramBotAuthMiddleware } from "../../middlewares/telegramBotAuthMiddleware";
 import {
   getOrderByIdSchema,
   updateOrderStatusSchema,
@@ -33,10 +36,50 @@ const controller = new OrderController(
 // Configure routes with validation
 const router = Router();
 
-router.get("/", validateRequest(getOrdersSchema), controller.getOrders);
-router.get("/stats", controller.getStats);
-router.get("/:id", validateRequest(getOrderByIdSchema), controller.getOrderById);
-router.patch("/:id/status", validateRequest(updateOrderStatusSchema), controller.updateOrderStatus);
+// Protected routes - require authentication and store ownership verification
+// Get all orders (with store_id filter)
+router.get("/", 
+  authMiddleware, 
+  validateRequest(getOrdersSchema),
+  extractStoreIdAndVerifyAccess,
+  controller.getOrders
+);
+
+// Get order statistics
+router.get("/stats", 
+  authMiddleware,
+  extractStoreIdAndVerifyAccess,
+  controller.getStats
+);
+
+// Get order by ID
+router.get("/:id", 
+  authMiddleware,
+  validateRequest(getOrderByIdSchema),
+  extractStoreIdAndVerifyAccess,
+  controller.getOrderById
+);
+
+// Update order status
+router.patch("/:id/status", 
+  authMiddleware,
+  validateRequest(updateOrderStatusSchema),
+  extractStoreIdAndVerifyAccess,
+  controller.updateOrderStatus
+);
+
+// Bot routes - authenticated with bot token
+// These routes are for the Telegram bot to access and create orders
+const botRouter = Router();
+
+// Bot webhook can create orders
+botRouter.post("/bot/create", telegramBotAuthMiddleware, controller.createOrderFromBot);
+
+// Bot can get order details
+botRouter.get("/bot/:id", telegramBotAuthMiddleware, controller.getOrderById);
+
+// Add bot routes to main router
+router.use(botRouter);
 
 export class OrderModule {
   static get routes(): Router {
