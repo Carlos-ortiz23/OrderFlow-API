@@ -903,3 +903,250 @@ paths:
                     example: DEGRADED
                   checks:
                     type: object
+  schemas:
+    # Definición del esquema Product
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        store_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        sku:
+          type: string
+          example: "PROD-001"
+        name:
+          type: string
+          example: "Premium Coffee Beans"
+        description:
+          type: string
+          example: "High-quality arabica coffee beans"
+        price:
+          type: number
+          format: float
+          example: 15.99
+        stock_quantity:
+          type: integer
+          example: 100
+        image_url:
+          type: string
+          format: uri
+          example: "https://example.com/images/coffee-beans.jpg"
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+    
+    # Definición del esquema Order
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        store_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        client_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        status:
+          type: string
+          enum: [pending, processing, completed, cancelled]
+          example: "pending"
+        total_amount:
+          type: number
+          format: float
+          example: 45.97
+        shipping_address:
+          type: string
+          example: "123 Main St, City, Country"
+        payment_method_id:
+          type: integer
+          example: 1
+        ai_summary:
+          type: string
+          example: "Customer requested extra napkins and no utensils"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: string
+                format: uuid
+              product_name:
+                type: string
+              quantity:
+                type: integer
+              unit_price:
+                type: number
+                format: float
+    
+    # Definición del esquema Category
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        store_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Beverages"
+        description:
+          type: string
+          example: "Drinks and liquid refreshments"
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        product_count:
+          type: integer
+          example: 15
+          description: Number of products in this category
+    
+    # Definición del esquema Tag
+    Tag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        store_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Organic"
+        created_at:
+          type: string
+          format: date-time
+        product_count:
+          type: integer
+          example: 8
+          description: Number of products with this tag
+    
+    # Definición del esquema ErrorResponse (si no existe ya)
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error message"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    # Respuestas comunes para errores
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Validation error"
+              errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Resource not found"
+    
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Internal server error"
+  
+  # Definición de los esquemas de seguridad
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+    
+    TelegramBotAuth:
+      type: apiKey
+      in: header
+      name: X-Telegram-Bot-Token
+      description: Telegram bot token for authentication
