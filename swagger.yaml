@@ -65,6 +65,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT access token obtained from login or register endpoint
+    BotAuth:
+      type: apiKey
+      in: header
+      name: X-Bot-Token
+      description: Telegram bot token for authentication
 
   schemas:
     # Authentication Schemas
@@ -1092,6 +1097,74 @@ paths:
                     items:
                       $ref: '#/components/schemas/Product'
 
+
+  /api/products/store/{storeId}:
+    get:
+      tags:
+        - Products
+      summary: Get products by store
+      description: |
+        Retrieve all products for a specific store using the store ID in the path.
+        Requires authentication and store access verification.
+      operationId: getProductsByStore
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID to filter products
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                      offset:
+                        type: integer
+                      total:
+                        type: integer
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/products/{id}:
     get:
       tags:
@@ -1884,3 +1957,235 @@ paths:
       in: header
       name: X-Telegram-Bot-Token
       description: Telegram bot token for authentication
+  /api/products/{productId}/categories:
+    get:
+      tags:
+        - Products
+      summary: Get categories for a product
+      description: Retrieve all categories assigned to a specific product
+      operationId: getProductCategories
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+  /api/products/{productId}/tags:
+    get:
+      tags:
+        - Products
+      summary: Get tags for a product
+      description: Retrieve all tags assigned to a specific product
+      operationId: getProductTags
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      responses:
+        '200':
+          description: Tags retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+
+  /api/categories/store/{storeId}:
+    get:
+      tags:
+        - Products
+      summary: Get categories by store
+      description: |
+        Retrieve all categories for a specific store.
+        Requires authentication and store access verification.
+      operationId: getCategoriesByStore
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tags/store/{storeId}:
+    get:
+      tags:
+        - Products
+      summary: Get tags by store
+      description: |
+        Retrieve all tags for a specific store.
+        Requires authentication and store access verification.
+      operationId: getTagsByStore
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      responses:
+        '200':
+          description: Tags retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Bot routes
+  /api/bot:
+    get:
+      tags:
+        - Bot
+      summary: Get all products (bot access)
+      description: Retrieve all products for a specific store via bot authentication
+      operationId: getBotProducts
+      security:
+        - BotAuth: []
+      parameters:
+        - name: store_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID to filter products
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+        '401':
+          description: Bot not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/bot/{id}:
+    get:
+      tags:
+        - Bot
+      summary: Get product by ID (bot access)
+      description: Retrieve a specific product by its ID via bot authentication
+      operationId: getBotProductById
+      security:
+        - BotAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Product ID
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
