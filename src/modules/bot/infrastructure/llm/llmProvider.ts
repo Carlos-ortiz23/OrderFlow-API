@@ -30,6 +30,64 @@ const TOOLS = [
   {
     type: "function" as const,
     function: {
+      name: "get_product_categories",
+      description: "Get all available product categories in the store",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_products_by_category",
+      description: "Get all products in a specific category",
+      parameters: {
+        type: "object",
+        properties: {
+          category_name: {
+            type: "string",
+            description: "The name of the category to search for products",
+          },
+        },
+        required: ["category_name"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_product_tags",
+      description: "Get all available product tags in the store",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_products_by_tag",
+      description: "Get all products with a specific tag",
+      parameters: {
+        type: "object",
+        properties: {
+          tag_name: {
+            type: "string",
+            description: "The name of the tag to search for products",
+          },
+        },
+        required: ["tag_name"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "check_client_address",
       description: "Check if the client has a saved shipping address in their profile",
       parameters: {
@@ -160,18 +218,22 @@ COMMUNICATION GUIDELINES:
 5. Keep responses brief and to the point
 
 BUSINESS RULES:
-1. NEVER invent or assume product availability. Always use 'search_products' to verify stock and pricing
+1. NEVER invent or assume product availability. Always use 'search_products', 'get_products_by_category', or 'get_products_by_tag' to verify stock and pricing
 2. If a product is not found, politely inform the customer it's currently unavailable
-3. Before finalizing any order, you MUST collect ALL required information:
+3. When customers ask about product categories, use 'get_product_categories' to show available categories
+4. When customers ask about product tags or specific types of products, use 'get_product_tags' to show available tags
+5. When customers ask for products in a specific category (e.g., "What beverages do you have?"), use 'get_products_by_category'
+6. When customers ask for products with specific characteristics (e.g., "What organic products do you have?"), use 'get_products_by_tag'
+7. Before finalizing any order, you MUST collect ALL required information:
    a. First use 'check_client_address' to see if the client has a saved address
    b. If no address is found, ask the client for their shipping address
    c. Use 'get_payment_methods' to retrieve available payment methods
    d. Ask the client to select a payment method from the list
    e. Ask if they have any special instructions for the order (optional)
-4. Confirm the complete order details including items, total, shipping address, and payment method
-5. Only call 'finalize_order' when the customer explicitly confirms ("yes", "confirm", "proceed")
-6. Always present prices clearly with currency symbol
-7. IMPORTANT: When calling 'finalize_order', you MUST use the exact 'uuid_id' found in the 'search_products' result
+8. Confirm the complete order details including items, total, shipping address, and payment method
+9. Only call 'finalize_order' when the customer explicitly confirms ("yes", "confirm", "proceed")
+10. Always present prices clearly with currency symbol
+11. IMPORTANT: When calling 'finalize_order', you MUST use the exact 'uuid_id' found in the product search results
 
 CHECKOUT PROCESS:
 1. When the customer is ready to checkout, first check if they have a saved address with 'check_client_address'
@@ -321,7 +383,172 @@ When calling 'finalize_order', you must include ALL required fields: items with 
             });
           }
 
-        // --- CASE 3: AI WANTS TO GET PAYMENT METHODS ---
+        // --- CASE 3: AI WANTS TO GET PRODUCT CATEGORIES ---
+        } else if (toolCall.function.name === "get_product_categories") {
+          logger.debug("Agent getting product categories", { userId, storeId });
+
+          try {
+            // Get all categories for the store
+            const { data: categories, error: categoryError } = await supabase
+              .rpc("get_store_categories", { p_store_id: storeId });
+
+            if (categoryError) {
+              logger.error("Error fetching categories", { error: categoryError, storeId });
+              toolResultContent = JSON.stringify({
+                success: false,
+                error: "Error fetching categories",
+                categories: []
+              });
+            } else {
+              toolResultContent = JSON.stringify({
+                success: true,
+                categories: categories.map((c: any) => ({
+                  id: c.category_id,
+                  name: c.category_name,
+                  description: c.category_description,
+                  product_count: c.product_count
+                }))
+              });
+            }
+          } catch (error) {
+            logger.error("Unexpected error getting categories", { error, storeId });
+            toolResultContent = JSON.stringify({
+              success: false,
+              error: "Unexpected error getting categories",
+              categories: []
+            });
+          }
+
+        // --- CASE 4: AI WANTS TO GET PRODUCTS BY CATEGORY ---
+        } else if (toolCall.function.name === "get_products_by_category") {
+          const args = JSON.parse(toolCall.function.arguments);
+          const categoryName = args.category_name;
+          logger.debug("Agent getting products by category", { categoryName, storeId });
+
+          try {
+            // Get products by category name
+            const { data: products, error: productsError } = await supabase
+              .rpc("get_products_by_category", { 
+                p_store_id: storeId,
+                p_category_name: categoryName
+              });
+
+            if (productsError) {
+              logger.error("Error fetching products by category", { error: productsError, categoryName, storeId });
+              toolResultContent = JSON.stringify({
+                success: false,
+                error: "Error fetching products by category",
+                products: []
+              });
+            } else {
+              // Format products similar to search_products for consistency
+              const productsForAI = products.map(p => ({
+                uuid_id: p.product_id,
+                name: p.product_name,
+                description: p.product_description,
+                price: p.product_price,
+                stock: p.product_stock_quantity,
+                instruction: "USE ONLY THE uuid_id FOR ORDERING"
+              }));
+
+              toolResultContent = JSON.stringify({
+                success: true,
+                category: categoryName,
+                products: productsForAI
+              });
+            }
+          } catch (error) {
+            logger.error("Unexpected error getting products by category", { error, categoryName, storeId });
+            toolResultContent = JSON.stringify({
+              success: false,
+              error: "Unexpected error getting products by category",
+              products: []
+            });
+          }
+
+        // --- CASE 5: AI WANTS TO GET PRODUCT TAGS ---
+        } else if (toolCall.function.name === "get_product_tags") {
+          logger.debug("Agent getting product tags", { userId, storeId });
+
+          try {
+            // Get all tags for the store
+            const { data: tags, error: tagError } = await supabase
+              .rpc("get_store_tags", { p_store_id: storeId });
+
+            if (tagError) {
+              logger.error("Error fetching tags", { error: tagError, storeId });
+              toolResultContent = JSON.stringify({
+                success: false,
+                error: "Error fetching tags",
+                tags: []
+              });
+            } else {
+              toolResultContent = JSON.stringify({
+                success: true,
+                tags: tags.map((t: any) => ({
+                  id: t.tag_id,
+                  name: t.tag_name,
+                  product_count: t.product_count
+                }))
+              });
+            }
+          } catch (error) {
+            logger.error("Unexpected error getting tags", { error, storeId });
+            toolResultContent = JSON.stringify({
+              success: false,
+              error: "Unexpected error getting tags",
+              tags: []
+            });
+          }
+
+        // --- CASE 6: AI WANTS TO GET PRODUCTS BY TAG ---
+        } else if (toolCall.function.name === "get_products_by_tag") {
+          const args = JSON.parse(toolCall.function.arguments);
+          const tagName = args.tag_name;
+          logger.debug("Agent getting products by tag", { tagName, storeId });
+
+          try {
+            // Get products by tag name
+            const { data: products, error: productsError } = await supabase
+              .rpc("get_products_by_tag", { 
+                p_store_id: storeId,
+                p_tag_name: tagName
+              });
+
+            if (productsError) {
+              logger.error("Error fetching products by tag", { error: productsError, tagName, storeId });
+              toolResultContent = JSON.stringify({
+                success: false,
+                error: "Error fetching products by tag",
+                products: []
+              });
+            } else {
+              // Format products similar to search_products for consistency
+              const productsForAI = products.map(p => ({
+                uuid_id: p.product_id,
+                name: p.product_name,
+                description: p.product_description,
+                price: p.product_price,
+                stock: p.product_stock_quantity,
+                instruction: "USE ONLY THE uuid_id FOR ORDERING"
+              }));
+
+              toolResultContent = JSON.stringify({
+                success: true,
+                tag: tagName,
+                products: productsForAI
+              });
+            }
+          } catch (error) {
+            logger.error("Unexpected error getting products by tag", { error, tagName, storeId });
+            toolResultContent = JSON.stringify({
+              success: false,
+              error: "Unexpected error getting products by tag",
+              products: []
+            });
+          }
+
+        // --- CASE 7: AI WANTS TO GET PAYMENT METHODS ---
         } else if (toolCall.function.name === "get_payment_methods") {
           logger.debug("Agent getting payment methods", { userId });
 
