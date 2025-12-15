@@ -1,0 +1,905 @@
+openapi: 3.0.0
+info:
+  title: OrderFlow API - DOC
+  version: 1.0.0
+  description: |
+    Professional REST API for managing orders through an intelligent Telegram chatbot with AI-powered processing.
+    
+    ## 🚀 Features
+    - **AI-Powered Bot**: Intelligent chatbot using LLM providers (OpenAI, DeepSeek, Groq)
+    - **JWT Authentication**: Secure token-based authentication with refresh tokens
+    - **Multi-Store Management**: Owners can manage multiple stores from one account
+    - **Product Management**: Real-time inventory and product search
+    - **Order Processing**: Automated order creation with stock validation
+    - **Role-Based Access Control**: Owner, admin, manager, and viewer roles
+    
+    ## 🔐 Authentication
+    The API uses JWT (JSON Web Tokens) for authentication.
+    
+    **Token Lifetimes:**
+    - Access Token: 15 minutes
+    - Refresh Token: 1 hour
+    
+    **How to authenticate:**
+    1. Register or login to get tokens
+    2. Include the access token in the Authorization header: `Bearer YOUR_ACCESS_TOKEN`
+    3. When the access token expires, use the refresh token to get a new one
+    
+    ## 🏪 Multi-Store Management
+    Owners can create and manage multiple stores from a single account. Each store has:
+    - Its own Telegram bot
+    - Independent product catalog
+    - Separate order management
+    - Custom AI system prompts
+    
+  contact:
+    name: OrderFlow Team
+    email: support@orderflow.com
+  license:
+    name: ISC
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://orderflow-api-831973953542.northamerica-south1.run.app
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User registration, login, token management, and profile
+  - name: Stores
+    description: Multi-store management for owners
+  - name: Products
+    description: Product inventory management
+  - name: Orders
+    description: Order creation and management
+  - name: Bot
+    description: Telegram bot webhook
+  - name: Health
+    description: System health monitoring
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token obtained from login or register endpoint
+
+  schemas:
+    # Authentication Schemas
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: owner@example.com
+          description: User email address
+        password:
+          type: string
+          format: password
+          minLength: 6
+          maxLength: 128
+          example: SecurePassword123
+          description: User password (6-128 characters)
+        full_name:
+          type: string
+          example: John Doe
+          description: Full name of the user (optional)
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: owner@example.com
+        password:
+          type: string
+          format: password
+          example: SecurePassword123
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: Refresh token obtained from login/register
+
+    VerifyTokenRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: Access token to verify
+
+    AuthTokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: JWT access token (expires in 15 minutes)
+        refreshToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: JWT refresh token (expires in 1 hour)
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        email:
+          type: string
+          format: email
+          example: owner@example.com
+        full_name:
+          type: string
+          example: John Doe
+        role:
+          type: string
+          enum: [owner, admin, manager, viewer]
+          example: owner
+        created_at:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: User registered successfully
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            tokens:
+              $ref: '#/components/schemas/AuthTokens'
+
+    # Store Schemas
+    CreateStoreRequest:
+      type: object
+      required:
+        - name
+        - telegram_bot_token
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: My Coffee Shop
+          description: Store name
+        slug:
+          type: string
+          pattern: ^[a-z0-9-]+$
+          example: my-coffee-shop
+          description: URL-friendly slug (optional, auto-generated from name)
+        telegram_bot_token:
+          type: string
+          example: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+          description: Telegram bot token for this store
+        system_prompt:
+          type: string
+          example: You are a helpful assistant for a coffee shop...
+          description: AI system prompt for the bot (optional)
+        address:
+          type: string
+          example: 123 Main St, City, Country
+          description: Physical store address (optional)
+        phone:
+          type: string
+          example: "+1234567890"
+          description: Contact phone number (optional)
+
+    UpdateStoreRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: My Updated Coffee Shop
+        telegram_bot_token:
+          type: string
+        system_prompt:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        is_active:
+          type: boolean
+          description: Store active status
+
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          example: My Coffee Shop
+        slug:
+          type: string
+          example: my-coffee-shop
+        owner_id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        telegram_bot_token:
+          type: string
+        system_prompt:
+          type: string
+        address:
+          type: string
+          example: 123 Main St, City, Country
+        phone:
+          type: string
+          example: "+1234567890"
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+
+    # Generic Response Schemas
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Error message
+        code:
+          type: string
+          example: ERROR_CODE
+
+paths:
+  # Authentication Endpoints
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: |
+        Create a new user account with owner role. The user will be able to create and manage multiple stores.
+        
+        **Validation:**
+        - Email must be valid format
+        - Email must be unique
+        - Password must be 6-128 characters
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              withFullName:
+                summary: Registration with full name
+                value:
+                  email: owner@example.com
+                  password: SecurePassword123
+                  full_name: John Doe
+              withoutFullName:
+                summary: Registration without full name
+                value:
+                  email: owner@example.com
+                  password: SecurePassword123
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                success: true
+                message: User registered successfully
+                data:
+                  user:
+                    id: 123e4567-e89b-12d3-a456-426614174000
+                    email: owner@example.com
+                    full_name: John Doe
+                    role: owner
+                    created_at: "2024-12-14T00:00:00.000Z"
+                  tokens:
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidEmail:
+                  summary: Invalid email format
+                  value:
+                    success: false
+                    message: Invalid email format
+                    code: VALIDATION_ERROR
+                shortPassword:
+                  summary: Password too short
+                  value:
+                    success: false
+                    message: Password must be at least 6 characters
+                    code: VALIDATION_ERROR
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Email is already registered
+                code: USER_ALREADY_EXISTS
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login to get access tokens
+      description: |
+        Authenticate with email and password to receive access and refresh tokens.
+        
+        **Returns:**
+        - Access token (15 minutes lifetime)
+        - Refresh token (1 hour lifetime)
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                success: true
+                message: Login successful
+                data:
+                  user:
+                    id: 123e4567-e89b-12d3-a456-426614174000
+                    email: owner@example.com
+                    full_name: John Doe
+                    role: owner
+                    created_at: "2024-12-14T00:00:00.000Z"
+                  tokens:
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Invalid credentials
+                code: INVALID_CREDENTIALS
+
+  /api/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: |
+        Use a refresh token to obtain a new access token when the current one expires.
+        
+        **Note:** This also returns a new refresh token. Always use the latest refresh token.
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                success: true
+                message: Token refreshed successfully
+                data:
+                  user:
+                    id: 123e4567-e89b-12d3-a456-426614174000
+                    email: owner@example.com
+                    full_name: John Doe
+                    role: owner
+                    created_at: "2024-12-14T00:00:00.000Z"
+                  tokens:
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Invalid or expired refresh token
+                code: INVALID_TOKEN
+
+  /api/auth/verify:
+    post:
+      tags:
+        - Authentication
+      summary: Verify token validity
+      description: Check if an access token is valid and not expired
+      operationId: verifyToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTokenRequest'
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+        '401':
+          description: Token is invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get user profile
+      description: Get the authenticated user's profile information
+      operationId: getProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Authentication token not provided
+
+  # Store Endpoints
+  /api/stores/{id}:
+    get:
+      tags:
+        - Stores
+      summary: Get store by ID
+      description: Retrieve detailed information about a specific store
+      operationId: getStoreById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      responses:
+        '200':
+          description: Store found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Store'
+        '404':
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Store not found
+
+    put:
+      tags:
+        - Stores
+      summary: Update store
+      description: |
+        Update store information. Only the store owner can update their stores.
+        
+        **Authorization:** Owner of the store
+      operationId: updateStore
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStoreRequest'
+      responses:
+        '200':
+          description: Store updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Store updated successfully
+                  data:
+                    $ref: '#/components/schemas/Store'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized (not the owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: You do not have permission to modify this store
+        '404':
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Stores
+      summary: Delete store
+      description: |
+        Delete a store. Only the store owner can delete their stores.
+        
+        **Warning:** This action cannot be undone.
+        
+        **Authorization:** Owner of the store
+      operationId: deleteStore
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID
+      responses:
+        '200':
+          description: Store deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Store deleted successfully
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/stores/my-stores:
+    get:
+      tags:
+        - Stores
+      summary: Get all stores owned by user
+      description: |
+        Retrieve all stores that belong to the authenticated user.
+        
+        **Authorization:** Any authenticated owner
+      operationId: getMyStores
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Stores retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Store'
+                  count:
+                    type: integer
+                    example: 3
+                    description: Total number of stores
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/stores:
+    post:
+      tags:
+        - Stores
+      summary: Create a new store
+      description: |
+        Create a new store. The authenticated user will be set as the owner.
+        
+        **Authorization:** Any authenticated owner
+        
+        **Note:** The slug will be auto-generated from the name if not provided.
+      operationId: createStore
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStoreRequest'
+            examples:
+              minimal:
+                summary: Minimal required fields
+                value:
+                  name: My Coffee Shop
+                  telegram_bot_token: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+              complete:
+                summary: All fields
+                value:
+                  name: My Coffee Shop
+                  slug: my-coffee-shop
+                  telegram_bot_token: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                  system_prompt: You are a helpful assistant for a coffee shop...
+                  address: 123 Main St, City, Country
+                  phone: "+1234567890"
+      responses:
+        '201':
+          description: Store created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Store created successfully
+                  data:
+                    $ref: '#/components/schemas/Store'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Store with this slug already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: A store with this slug already exists
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: Check if the API is running
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  service:
+                    type: string
+                    example: OrderFlow API
+                  timestamp:
+                    type: string
+                    format: date-time
+                  environment:
+                    type: string
+                    example: development
+
+  /health/detailed:
+    get:
+      tags:
+        - Health
+      summary: Detailed health check
+      description: Check the health of all services (API, Supabase, LLM, Telegram)
+      operationId: detailedHealthCheck
+      responses:
+        '200':
+          description: All services are healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  service:
+                    type: string
+                    example: OrderFlow API
+                  timestamp:
+                    type: string
+                    format: date-time
+                  environment:
+                    type: string
+                  checks:
+                    type: object
+                    properties:
+                      api:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: OK
+                          message:
+                            type: string
+                      supabase:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          message:
+                            type: string
+                      llm:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          message:
+                            type: string
+                      telegram:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          message:
+                            type: string
+        '503':
+          description: One or more services are unhealthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: DEGRADED
+                  checks:
+                    type: object
