@@ -107,6 +107,103 @@ export class ProductController {
 
   /**
    * @swagger
+   * /api/products/store/{storeId}:
+   *   get:
+   *     summary: Get products by store
+   *     description: Retrieve all products for a specific store with pagination
+   *     tags: [Products]
+   *     parameters:
+   *       - in: path
+   *         name: storeId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Store ID to filter products
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 50
+   *         description: Maximum number of products to return
+   *       - in: query
+   *         name: offset
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: Number of products to skip
+   *     security:
+   *       - BearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Products retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Product'
+   *                 pagination:
+   *                   type: object
+   *                   properties:
+   *                     limit:
+   *                       type: integer
+   *                     offset:
+   *                       type: integer
+   *                     total:
+   *                       type: integer
+   *       400:
+   *         description: Bad request - Missing storeId
+   *       401:
+   *         description: Unauthorized - Not authenticated
+   *       403:
+   *         description: Forbidden - Not authorized to access this store
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  getProductsByStore = async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const { limit = 50, offset = 0 } = req.query;
+
+      if (!storeId) {
+        return res.status(400).json({
+          success: false,
+          error: "storeId is required",
+        });
+      }
+
+      const products = await this.getAllProductsUseCase.execute(
+        Number(limit),
+        Number(offset),
+        storeId
+      );
+
+      res.json({
+        success: true,
+        data: products,
+        pagination: {
+          limit: Number(limit),
+          offset: Number(offset),
+          total: products.length,
+        },
+      });
+    } catch (error) {
+      logger.error("Error in getProductsByStore controller", { error, storeId: req.params.storeId });
+      res.status(500).json({
+        success: false,
+        error: "Error retrieving products",
+      });
+    }
+  };
+
+  /**
+   * @swagger
    * /api/products/search:
    *   get:
    *     summary: Search products
