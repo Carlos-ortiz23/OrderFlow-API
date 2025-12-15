@@ -9,6 +9,11 @@ export interface OrderItemDetail {
 }
 
 export class Order {
+  // Optional fields that can be set after construction
+  public shipping_address?: string;
+  public payment_method_id?: number;
+  public ai_summary?: string | null;
+  
   constructor(
     public storeId: string,
     public userId: string,

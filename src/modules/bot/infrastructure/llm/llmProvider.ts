@@ -30,9 +30,33 @@ const TOOLS = [
   {
     type: "function" as const,
     function: {
+      name: "check_client_address",
+      description: "Check if the client has a saved shipping address in their profile",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_payment_methods",
+      description: "Get available payment methods for the order",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "finalize_order",
       description:
-        "Create the final order ONLY when the customer explicitly confirms they don't want anything else.",
+        "Create the final order ONLY when the customer explicitly confirms they don't want anything else and has provided all required information.",
       parameters: {
         type: "object",
         properties: {
@@ -54,8 +78,20 @@ const TOOLS = [
               required: ["product_id", "product_name", "quantity"],
             },
           },
+          shipping_address: {
+            type: "string",
+            description: "The shipping address where the order will be delivered. Must be provided by the customer.",
+          },
+          payment_method_id: {
+            type: "number",
+            description: "The ID of the payment method selected by the customer. Must be a valid ID from get_payment_methods.",
+          },
+          special_instructions: {
+            type: "string",
+            description: "Any special instructions or notes for the order (optional).",
+          },
         },
-        required: ["items"],
+        required: ["items", "shipping_address", "payment_method_id"],
       },
     },
   },
@@ -113,7 +149,7 @@ SECURITY AND PRIVACY PRINCIPLES:
 - NEVER request sensitive personal information (credit card numbers, passwords, ID documents, social security numbers)
 - NEVER share information about other customers or their orders
 - Maintain strict confidentiality of all order details
-- Only process information necessary for the purchase (product names and quantities)
+- Only process information necessary for the purchase (product names, quantities, shipping address)
 - If asked for sensitive data, politely decline and explain we don't collect such information
 
 COMMUNICATION GUIDELINES:
@@ -126,18 +162,34 @@ COMMUNICATION GUIDELINES:
 BUSINESS RULES:
 1. NEVER invent or assume product availability. Always use 'search_products' to verify stock and pricing
 2. If a product is not found, politely inform the customer it's currently unavailable
-3. Before finalizing any order, confirm the total amount and ask: "Would you like to proceed with this purchase?"
-4. Only call 'finalize_order' when the customer explicitly confirms ("yes", "confirm", "proceed", "that's all")
-5. Always present prices clearly with currency symbol
-6. IMPORTANT: When calling 'finalize_order', you MUST use the exact 'id' (UUID) found in the 'search_products' result. DO NOT invent IDs or use product names as IDs.
+3. Before finalizing any order, you MUST collect ALL required information:
+   a. First use 'check_client_address' to see if the client has a saved address
+   b. If no address is found, ask the client for their shipping address
+   c. Use 'get_payment_methods' to retrieve available payment methods
+   d. Ask the client to select a payment method from the list
+   e. Ask if they have any special instructions for the order (optional)
+4. Confirm the complete order details including items, total, shipping address, and payment method
+5. Only call 'finalize_order' when the customer explicitly confirms ("yes", "confirm", "proceed")
+6. Always present prices clearly with currency symbol
+7. IMPORTANT: When calling 'finalize_order', you MUST use the exact 'uuid_id' found in the 'search_products' result
+
+CHECKOUT PROCESS:
+1. When the customer is ready to checkout, first check if they have a saved address with 'check_client_address'
+2. If they have a saved address, confirm if they want to use it or provide a new one
+3. If no saved address, ask them to provide their shipping address
+4. Get available payment methods with 'get_payment_methods' and ask them to select one by ID
+5. Ask if they have any special instructions or notes for the order (optional)
+6. Confirm all details before finalizing the order
 
 RESPONSE FORMAT:
 - Product information: "Product: [name] - Price: $[amount] - Available stock: [quantity] units"
 - Order totals: "Order total: $[amount]"
+- Address confirmation: "Shipping to: [address]"
+- Payment method: "Payment method: [method name]"
 - Confirmations: "Order confirmed. Order ID: [id]. Total: $[amount]. Thank you for your purchase."
-134: 
-135: CRITICAL RULE:
-136: When calling 'finalize_order', you must use the 'uuid_id' provided in the search results. NEVER use the product name. If you use a name like 'papas', the order will fail.`;
+
+CRITICAL RULE:
+When calling 'finalize_order', you must include ALL required fields: items with correct uuid_ids, shipping_address, and payment_method_id.`;
 
     // Add personalized greeting for first interaction
     if (isFirstInteraction) {
@@ -203,7 +255,106 @@ RESPONSE FORMAT:
           // Give the AI the JSON of the real inventory
           toolResultContent = JSON.stringify(productsForAI);
 
-          // --- CASE 2: AI WANTS TO FINALIZE PURCHASE ---
+        // --- CASE 2: AI WANTS TO CHECK CLIENT ADDRESS ---
+        } else if (toolCall.function.name === "check_client_address") {
+          logger.debug("Agent checking client address", { userId });
+
+          try {
+            // First check if client has a shipping_address in their profile
+            const { data: client, error: clientError } = await supabase
+              .from("clients")
+              .select("shipping_address")
+              .eq("id", userId)
+              .single();
+
+            if (clientError) {
+              logger.error("Error fetching client address", { error: clientError, userId });
+              toolResultContent = JSON.stringify({
+                has_address: false,
+                address: null,
+                error: "Error fetching client data"
+              });
+            } else if (client?.shipping_address) {
+              // Client has an address in their profile
+              toolResultContent = JSON.stringify({
+                has_address: true,
+                address: client.shipping_address
+              });
+            } else {
+              // Try to get address from previous orders
+              const { data: latestOrder, error: orderError } = await supabase
+                .from("orders")
+                .select("shipping_address")
+                .eq("client_id", userId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (orderError) {
+                logger.error("Error fetching previous orders", { error: orderError, userId });
+                toolResultContent = JSON.stringify({
+                  has_address: false,
+                  address: null,
+                  error: "Error fetching order history"
+                });
+              } else if (latestOrder?.shipping_address) {
+                // Found address in previous order
+                toolResultContent = JSON.stringify({
+                  has_address: true,
+                  address: latestOrder.shipping_address,
+                  source: "previous_order"
+                });
+              } else {
+                // No address found
+                toolResultContent = JSON.stringify({
+                  has_address: false,
+                  address: null
+                });
+              }
+            }
+          } catch (error) {
+            logger.error("Unexpected error checking client address", { error, userId });
+            toolResultContent = JSON.stringify({
+              has_address: false,
+              address: null,
+              error: "Unexpected error checking address"
+            });
+          }
+
+        // --- CASE 3: AI WANTS TO GET PAYMENT METHODS ---
+        } else if (toolCall.function.name === "get_payment_methods") {
+          logger.debug("Agent getting payment methods", { userId });
+
+          try {
+            // Get available payment methods from database
+            const { data: paymentMethods, error: paymentError } = await supabase
+              .from("payment_methods")
+              .select("id, code, label")
+              .eq("is_active", true);
+
+            if (paymentError) {
+              logger.error("Error fetching payment methods", { error: paymentError });
+              toolResultContent = JSON.stringify({
+                success: false,
+                error: "Error fetching payment methods",
+                payment_methods: []
+              });
+            } else {
+              toolResultContent = JSON.stringify({
+                success: true,
+                payment_methods: paymentMethods
+              });
+            }
+          } catch (error) {
+            logger.error("Unexpected error getting payment methods", { error });
+            toolResultContent = JSON.stringify({
+              success: false,
+              error: "Unexpected error getting payment methods",
+              payment_methods: []
+            });
+          }
+
+        // --- CASE 4: AI WANTS TO FINALIZE PURCHASE ---
         } else if (toolCall.function.name === "finalize_order") {
           const args = JSON.parse(toolCall.function.arguments);
           logger.info("Agent attempting to finalize order", {
@@ -212,11 +363,50 @@ RESPONSE FORMAT:
             items: args.items
           });
 
+          // Get required fields from args
+          const { items, shipping_address, payment_method_id, special_instructions } = args;
+          
+          // Validate shipping address
+          if (!shipping_address || shipping_address.trim() === '') {
+            logger.error("Missing shipping address in order", { userId });
+            toolResultContent = JSON.stringify({
+              success: false,
+              error: "Shipping address is required"
+            });
+            return "I need a shipping address to complete your order. Could you please provide your delivery address?";
+          }
+          
+          // Validate payment method
+          if (!payment_method_id) {
+            logger.error("Missing payment method in order", { userId });
+            toolResultContent = JSON.stringify({
+              success: false,
+              error: "Payment method is required"
+            });
+            return "I need a payment method to complete your order. Could you please select one of the available payment methods?";
+          }
+          
+          // Verify payment method exists
+          const { data: paymentMethod, error: paymentError } = await supabase
+            .from("payment_methods")
+            .select("id")
+            .eq("id", payment_method_id)
+            .single();
+            
+          if (paymentError || !paymentMethod) {
+            logger.error("Invalid payment method", { payment_method_id, error: paymentError });
+            toolResultContent = JSON.stringify({
+              success: false,
+              error: "Invalid payment method"
+            });
+            return "I'm sorry, but the payment method you selected is not valid. Please choose a valid payment method and try again.";
+          }
+
           // Calculate real totals validating against DB (Security)
           let total = 0;
           let finalItems = [];
 
-          for (const item of args.items) {
+          for (const item of items) {
             let productId = item.product_id;
 
             // --- ID RESOLVER MIDDLEWARE ---
@@ -271,12 +461,36 @@ RESPONSE FORMAT:
 
           if (finalItems.length > 0) {
             logger.info("Executing create order use case", { total, itemCount: finalItems.length });
+            
+            // Create the order with the new fields
             const newOrder = new Order(storeId, userId, finalItems, total);
+            
+            // Add the new fields to the order
+            newOrder.shipping_address = shipping_address;
+            newOrder.payment_method_id = payment_method_id;
+            newOrder.ai_summary = special_instructions || null;
+            
+            // Save the shipping address to the client profile for future use
+            try {
+              await supabase
+                .from("clients")
+                .update({ shipping_address: shipping_address })
+                .eq("id", userId);
+                
+              logger.info("Updated client shipping address", { userId, shipping_address });
+            } catch (error) {
+              logger.warn("Failed to update client shipping address", { error, userId });
+              // Don't fail the order creation if this fails
+            }
+            
             const orderId = await this.createOrderUseCase.execute(newOrder);
             toolResultContent = JSON.stringify({
               success: true,
               order_id: orderId,
-              total_pagado: total,
+              total_amount: total,
+              shipping_address: shipping_address,
+              payment_method_id: payment_method_id,
+              has_special_instructions: !!special_instructions
             });
           } else {
             logger.error("Order finalization failed - No valid items found", { originalArgs: args });
