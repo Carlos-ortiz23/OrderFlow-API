@@ -66,6 +66,62 @@ components:
       bearerFormat: JWT
       description: JWT access token obtained from login or register endpoint
 
+  responses:
+    BadRequest:
+      description: Bad request - validation error or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: Validation error
+            code: BAD_REQUEST
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: Resource not found
+            code: NOT_FOUND
+    
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: Authentication required
+            code: UNAUTHORIZED
+    
+    Forbidden:
+      description: Access denied - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: Access denied
+            code: FORBIDDEN
+    
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: Internal server error
+            code: INTERNAL_ERROR
+
   schemas:
     # Authentication Schemas
     RegisterRequest:
@@ -291,10 +347,6 @@ components:
         is_available:
           type: boolean
           example: true
-        image_url:
-          type: string
-          format: uri
-          example: https://example.com/images/cappuccino.jpg
         created_at:
           type: string
           format: date-time
@@ -305,14 +357,17 @@ components:
     CreateProductRequest:
       type: object
       required:
-        - store_id
+        - storeId
         - name
         - price
+        - stock
+        - unit
       properties:
-        store_id:
+        storeId:
           type: string
           format: uuid
           description: Store ID this product belongs to
+          example: "123e4567-e89b-12d3-a456-426614174000"
         name:
           type: string
           minLength: 1
@@ -330,17 +385,19 @@ components:
           type: integer
           minimum: 0
           example: 100
-        is_available:
-          type: boolean
-          default: true
-        image_url:
+        unit:
           type: string
-          format: uri
+          example: "kg"
+          description: Unit of measurement (kg, units, liters, etc.)
+        category:
+          type: string
+          example: "Beverages"
+          description: Product category (optional)
 
     UpdateProductRequest:
       type: object
       properties:
-        store_id:
+        storeId:
           type: string
           format: uuid
           description: Store ID for authorization
@@ -355,11 +412,12 @@ components:
         stock:
           type: integer
           minimum: 0
-        is_available:
-          type: boolean
-        image_url:
+        unit:
           type: string
-          format: uri
+          description: Unit of measurement
+        category:
+          type: string
+          description: Product category
 
     # Order Schemas
     Order:
@@ -971,19 +1029,19 @@ paths:
       description: Retrieve all products for a specific store
       operationId: getAllProducts
       parameters:
-        - name: store_id
+        - name: storeId
           in: query
           required: true
           schema:
             type: string
             format: uuid
           description: Store ID to filter products
-        - name: page
+        - name: offset
           in: query
           schema:
             type: integer
-            default: 1
-          description: Page number for pagination
+            default: 0
+          description: Number of products to skip
         - name: limit
           in: query
           schema:
@@ -1063,19 +1121,22 @@ paths:
       description: Search products by name or description
       operationId: searchProducts
       parameters:
-        - name: store_id
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: Search query
+          example: "cafe"
+        - name: storeId
           in: query
           required: true
           schema:
             type: string
             format: uuid
           description: Store ID to search within
-        - name: q
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Search query
+          example: "85c10d69-ef90-4628-9b73-4804cfb7ab1"
       responses:
         '200':
           description: Search results
@@ -1107,6 +1168,13 @@ paths:
             type: string
             format: uuid
           description: Product ID
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID for multi-tenancy verification
       responses:
         '200':
           description: Product found
@@ -1197,6 +1265,13 @@ paths:
             type: string
             format: uuid
           description: Product ID
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Store ID for authorization
       responses:
         '200':
           description: Product deleted successfully

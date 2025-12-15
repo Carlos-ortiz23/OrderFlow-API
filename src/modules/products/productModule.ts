@@ -121,44 +121,7 @@ const tagController = new TagController(
 // Configure routes with validation
 const router = Router();
 
-// ===== PRODUCT ROUTES =====
-// Public routes (read-only) - require store_id parameter
-router.get("/", validateRequest(getAllProductsSchema), productController.getAllProducts);
-router.get("/search", validateRequest(searchProductsSchema), productController.searchProducts);
-router.get("/:id", validateRequest(getProductByIdSchema), productController.getProductById);
-
-// Protected routes - require authentication and store ownership verification
-// Create product
-router.post("/", 
-  authMiddleware, 
-  validateRequest(createProductSchema),
-  verifyStoreAccess('store_id'),
-  productController.createProduct
-);
-
-// Update product
-router.put("/:id", 
-  authMiddleware, 
-  validateRequest(updateProductSchema),
-  verifyStoreAccess('store_id'),
-  productController.updateProduct
-);
-
-// Delete product
-router.delete("/:id", 
-  authMiddleware, 
-  validateRequest(deleteProductSchema),
-  verifyStoreAccess('store_id'),
-  productController.deleteProduct
-);
-
-// Get product categories
-router.get("/:productId/categories", categoryController.getProductCategories);
-
-// Get product tags
-router.get("/:productId/tags", tagController.getProductTags);
-
-// ===== CATEGORY ROUTES =====
+// ===== CATEGORY ROUTES (must be before /:id to avoid conflicts) =====
 // Get all categories
 router.get("/categories", categoryController.getAllCategories);
 
@@ -198,7 +161,7 @@ router.delete("/categories/:categoryId/products/:productId",
   categoryController.removeProductFromCategory
 );
 
-// ===== TAG ROUTES =====
+// ===== TAG ROUTES (must be before /:id to avoid conflicts) =====
 // Get all tags
 router.get("/tags", tagController.getAllTags);
 
@@ -236,6 +199,45 @@ router.post("/tags/:tagId/products/:productId",
 router.delete("/tags/:tagId/products/:productId", 
   authMiddleware,
   tagController.removeProductFromTag
+);
+
+// ===== PRODUCT ROUTES =====
+// Public routes (read-only) - require store_id parameter
+router.get("/", validateRequest(getAllProductsSchema), productController.getAllProducts);
+router.get("/search", validateRequest(searchProductsSchema), productController.searchProducts);
+
+// Get product by ID (must be after /categories, /tags, /search to avoid conflicts)
+router.get("/:id", validateRequest(getProductByIdSchema), productController.getProductById);
+
+// Get product categories
+router.get("/:productId/categories", categoryController.getProductCategories);
+
+// Get product tags
+router.get("/:productId/tags", tagController.getProductTags);
+
+// Protected routes - require authentication and store ownership verification
+// Create product
+router.post("/", 
+  authMiddleware, 
+  validateRequest(createProductSchema),
+  verifyStoreAccess('storeId'),
+  productController.createProduct
+);
+
+// Update product
+router.put("/:id", 
+  authMiddleware, 
+  validateRequest(updateProductSchema),
+  verifyStoreAccess('storeId'),
+  productController.updateProduct
+);
+
+// Delete product
+router.delete("/:id", 
+  authMiddleware, 
+  validateRequest(deleteProductSchema),
+  verifyStoreAccess('storeId'),
+  productController.deleteProduct
 );
 
 // Bot routes - authenticated with bot token
