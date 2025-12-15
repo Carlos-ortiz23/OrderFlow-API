@@ -51,15 +51,23 @@ export class StoreController {
 
             const { name, slug, telegram_bot_token, system_prompt, address, phone } = req.body;
 
-            if (!name || !slug) {
+            if (!name) {
                 res.status(400).json({
                     success: false,
-                    message: "Name and slug are required"
+                    message: "Name is required"
                 });
                 return;
             }
+            
+            // Generate slug from name if not provided
+            const storeSlug = slug || name.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+                .replace(/\s+/g, '-')        // Replace spaces with hyphens
+                .replace(/-+/g, '-')         // Remove consecutive hyphens
+                .trim();                     // Trim leading/trailing spaces or hyphens
 
-            const existingStore = await this.storeRepo.getStoreBySlug(slug);
+            // Check if the generated or provided slug already exists
+            const existingStore = await this.storeRepo.getStoreBySlug(storeSlug);
             if (existingStore) {
                 res.status(409).json({
                     success: false,
@@ -68,9 +76,18 @@ export class StoreController {
                 return;
             }
 
+            // Validate telegram_bot_token is provided
+            if (!telegram_bot_token) {
+                res.status(400).json({
+                    success: false,
+                    message: "Telegram bot token is required"
+                });
+                return;
+            }
+
             const storeData: CreateStoreData = {
                 name,
-                slug,
+                slug: storeSlug,
                 owner_id: req.user.userId,
                 telegram_bot_token,
                 system_prompt,
