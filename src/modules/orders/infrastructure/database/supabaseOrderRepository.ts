@@ -78,7 +78,9 @@ export class SupabaseOrderRepository implements OrderRepository {
           client_id: order.userId, // Maps domain 'userId' (client) to DB 'client_id'
           status_id: pendingStatusId,
           total_amount: order.total,
-          // payment_method_id: ... (Assuming undefined or null for now until payment flow is added)
+          shipping_address: order.shipping_address,
+          payment_method_id: order.payment_method_id,
+          ai_summary: order.ai_summary
         })
         .select("id")
         .single();
@@ -176,7 +178,7 @@ export class SupabaseOrderRepository implements OrderRepository {
     // @ts-ignore
     const statusCode = orderData.order_statuses?.code || "pending";
 
-    return new Order(
+    const order = new Order(
       orderData.store_id,
       orderData.client_id,
       items,
@@ -184,6 +186,13 @@ export class SupabaseOrderRepository implements OrderRepository {
       statusCode,
       orderData.id
     );
+    
+    // Add the additional fields
+    order.shipping_address = orderData.shipping_address;
+    order.payment_method_id = orderData.payment_method_id;
+    order.ai_summary = orderData.ai_summary;
+    
+    return order;
   }
 
   async getAllOrders(limit: number = 50, offset: number = 0, storeId?: string): Promise<Order[]> {
@@ -224,7 +233,7 @@ export class SupabaseOrderRepository implements OrderRepository {
       // @ts-ignore
       const statusCode = orderData.order_statuses?.code || "pending";
 
-      return new Order(
+      const order = new Order(
         orderData.store_id,
         orderData.client_id,
         items,
@@ -232,6 +241,13 @@ export class SupabaseOrderRepository implements OrderRepository {
         statusCode,
         orderData.id
       );
+      
+      // Add the additional fields
+      order.shipping_address = orderData.shipping_address;
+      order.payment_method_id = orderData.payment_method_id;
+      order.ai_summary = orderData.ai_summary;
+      
+      return order;
     });
   }
 
@@ -280,7 +296,7 @@ export class SupabaseOrderRepository implements OrderRepository {
       // @ts-ignore
       const code = orderData.order_statuses?.code || statusCode;
 
-      return new Order(
+      const order = new Order(
         orderData.store_id,
         orderData.client_id,
         items,
@@ -288,6 +304,13 @@ export class SupabaseOrderRepository implements OrderRepository {
         code,
         orderData.id
       );
+      
+      // Add the additional fields
+      order.shipping_address = orderData.shipping_address;
+      order.payment_method_id = orderData.payment_method_id;
+      order.ai_summary = orderData.ai_summary;
+      
+      return order;
     });
   }
 
