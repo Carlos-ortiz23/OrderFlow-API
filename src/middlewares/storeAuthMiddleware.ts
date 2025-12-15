@@ -92,29 +92,6 @@ export const verifyStoreAccess = (storeIdParam: string = 'storeId') => {
   };
 };
 
-/**
- * Middleware to extract storeId from request and verify access
- * This is useful for routes where storeId is in the body or query
- */
-export const extractStoreIdAndVerifyAccess = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): void => {
-  const storeId = req.body.store_id || req.query.store_id;
-  
-  if (!storeId) {
-    res.status(400).json({
-      success: false,
-      message: 'Store ID is required'
-    });
-    return;
-  }
-
-  // Add storeId to params so verifyStoreAccess can use it
-  req.params.storeId = storeId;
-  verifyStoreAccess('storeId')(req, res, next);
-};
 
 // Extend the AuthRequest interface to include storeId
 declare module 'express' {

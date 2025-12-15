@@ -38,7 +38,7 @@ import { GetTagProductsUseCase } from "./application/tag/getTagProductsUseCase";
 
 import { validateRequest } from "../../middlewares/validateRequest";
 import { authMiddleware } from "../../middlewares/authMiddleware";
-import { verifyStoreAccess, extractStoreIdAndVerifyAccess } from "../../middlewares/storeAuthMiddleware";
+import { verifyStoreAccess } from "../../middlewares/storeAuthMiddleware";
 import { telegramBotAuthMiddleware, telegramBotQueryAuthMiddleware } from "../../middlewares/telegramBotAuthMiddleware";
 import {
   createProductSchema,
@@ -123,9 +123,9 @@ const router = Router();
 
 // ===== PRODUCT ROUTES =====
 // Public routes (read-only) - require store_id parameter
-router.get("/products", validateRequest(getAllProductsSchema), productController.getAllProducts);
-router.get("/products/search", validateRequest(searchProductsSchema), productController.searchProducts);
-router.get("/products/:id", validateRequest(getProductByIdSchema), productController.getProductById);
+router.get("/", validateRequest(getAllProductsSchema), productController.getAllProducts);
+router.get("/search", validateRequest(searchProductsSchema), productController.searchProducts);
+router.get("/:id", validateRequest(getProductByIdSchema), productController.getProductById);
 
 // Get products by store (authenticated route)
 router.get("/products/store/:storeId", 
@@ -136,34 +136,34 @@ router.get("/products/store/:storeId",
 
 // Protected routes - require authentication and store ownership verification
 // Create product
-router.post("/products", 
+router.post("/", 
   authMiddleware, 
   validateRequest(createProductSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   productController.createProduct
 );
 
 // Update product
-router.put("/products/:id", 
+router.put("/:id", 
   authMiddleware, 
   validateRequest(updateProductSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   productController.updateProduct
 );
 
 // Delete product
-router.delete("/products/:id", 
+router.delete("/:id", 
   authMiddleware, 
   validateRequest(deleteProductSchema),
-  extractStoreIdAndVerifyAccess,
+  verifyStoreAccess('store_id'),
   productController.deleteProduct
 );
 
 // Get product categories
-router.get("/products/:productId/categories", categoryController.getProductCategories);
+router.get("/:productId/categories", categoryController.getProductCategories);
 
 // Get product tags
-router.get("/products/:productId/tags", tagController.getProductTags);
+router.get("/:productId/tags", tagController.getProductTags);
 
 // ===== CATEGORY ROUTES =====
 // Get all categories
@@ -262,8 +262,8 @@ router.delete("/tags/:tagId/products/:productId",
 // Bot routes - authenticated with bot token
 // These routes are for the Telegram bot to access products
 const botRouter = Router();
-botRouter.get("/bot/products", telegramBotAuthMiddleware, productController.getAllProducts);
-botRouter.get("/bot/products/:id", telegramBotAuthMiddleware, productController.getProductById);
+botRouter.get("/bot", telegramBotAuthMiddleware, productController.getAllProducts);
+botRouter.get("/bot/:id", telegramBotAuthMiddleware, productController.getProductById);
 botRouter.get("/bot/categories", telegramBotAuthMiddleware, categoryController.getAllCategories);
 botRouter.get("/bot/categories/:id/products", telegramBotAuthMiddleware, categoryController.getCategoryProducts);
 botRouter.get("/bot/tags", telegramBotAuthMiddleware, tagController.getAllTags);

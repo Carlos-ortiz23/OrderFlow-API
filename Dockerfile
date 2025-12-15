@@ -17,6 +17,7 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Default values - can be overridden via docker-compose or runtime environment
 ENV NODE_ENV=production
 ENV PORT=3000
 
