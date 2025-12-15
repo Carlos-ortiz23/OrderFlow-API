@@ -8,6 +8,9 @@ import { CreateProductUseCase } from "./application/createProductUseCase";
 import { UpdateProductUseCase } from "./application/updateProductUseCase";
 import { DeleteProductUseCase } from "./application/deleteProductUseCase";
 import { validateRequest } from "../../middlewares/validateRequest";
+import { authMiddleware } from "../../middlewares/authMiddleware";
+import { verifyStoreAccess, extractStoreIdAndVerifyAccess } from "../../middlewares/storeAuthMiddleware";
+import { telegramBotAuthMiddleware, telegramBotQueryAuthMiddleware } from "../../middlewares/telegramBotAuthMiddleware";
 import {
   createProductSchema,
   updateProductSchema,
@@ -41,12 +44,44 @@ const controller = new ProductController(
 // Configure routes with validation
 const router = Router();
 
+// Public routes (read-only) - require store_id parameter
 router.get("/", validateRequest(getAllProductsSchema), controller.getAllProducts);
 router.get("/search", validateRequest(searchProductsSchema), controller.searchProducts);
 router.get("/:id", validateRequest(getProductByIdSchema), controller.getProductById);
-router.post("/", validateRequest(createProductSchema), controller.createProduct);
-router.put("/:id", validateRequest(updateProductSchema), controller.updateProduct);
-router.delete("/:id", validateRequest(deleteProductSchema), controller.deleteProduct);
+
+// Protected routes - require authentication and store ownership verification
+// Create product
+router.post("/", 
+  authMiddleware, 
+  validateRequest(createProductSchema),
+  extractStoreIdAndVerifyAccess,
+  controller.createProduct
+);
+
+// Update product
+router.put("/:id", 
+  authMiddleware, 
+  validateRequest(updateProductSchema),
+  extractStoreIdAndVerifyAccess,
+  controller.updateProduct
+);
+
+// Delete product
+router.delete("/:id", 
+  authMiddleware, 
+  validateRequest(deleteProductSchema),
+  extractStoreIdAndVerifyAccess,
+  controller.deleteProduct
+);
+
+// Bot routes - authenticated with bot token
+// These routes are for the Telegram bot to access products
+const botRouter = Router();
+botRouter.get("/bot/products", telegramBotAuthMiddleware, controller.getAllProducts);
+botRouter.get("/bot/products/:id", telegramBotAuthMiddleware, controller.getProductById);
+
+// Add bot routes to main router
+router.use(botRouter);
 
 export class ProductModule {
   static get routes(): Router {
