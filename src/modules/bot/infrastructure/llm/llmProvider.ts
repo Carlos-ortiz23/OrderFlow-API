@@ -306,7 +306,7 @@ When calling 'finalize_order', you must include ALL required fields: items with 
           const products = await this.productRepo.searchProducts(args.query, storeId);
 
           // Enhanced Context Injection: Format the output to force the AI to see the UUIDs
-          const productsForAI = products.map(p => ({
+          const productsForAI = products.map((p: any) => ({
             uuid_id: p.id, // Explicit label
             name: p.name,
             price: p.price,
@@ -442,7 +442,7 @@ When calling 'finalize_order', you must include ALL required fields: items with 
               });
             } else {
               // Format products similar to search_products for consistency
-              const productsForAI = products.map(p => ({
+              const productsForAI = products.map((p: any) => ({
                 uuid_id: p.product_id,
                 name: p.product_name,
                 description: p.product_description,
@@ -524,7 +524,7 @@ When calling 'finalize_order', you must include ALL required fields: items with 
               });
             } else {
               // Format products similar to search_products for consistency
-              const productsForAI = products.map(p => ({
+              const productsForAI = products.map((p: any) => ({
                 uuid_id: p.product_id,
                 name: p.product_name,
                 description: p.product_description,
