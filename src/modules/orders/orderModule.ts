@@ -63,7 +63,7 @@ router.get("/:id",
 // Get orders by store
 router.get("/store/:storeId", 
   authMiddleware,
-  verifyStoreAccess,
+  verifyStoreAccess('storeId'),
   controller.getOrdersByStore
 );
 
