@@ -1,15 +1,15 @@
 /**
- * Script para generar una StringSession de Telegram para la API MTProto
+ * Script to generate a Telegram StringSession for the MTProto API
  * 
- * Este script te ayudará a generar la variable TELEGRAM_SESSION necesaria
- * para la funcionalidad de creación automática de bots de Telegram.
+ * This script will help you generate the TELEGRAM_SESSION variable required
+ * for the automatic Telegram bot creation functionality.
  * 
- * Uso:
- * 1. Asegúrate de tener las variables TELEGRAM_API_ID y TELEGRAM_API_HASH en tu .env
- *    o ingrésalas cuando el script te las solicite
- * 2. Ejecuta: node scripts/generate-telegram-session.js
- * 3. Sigue las instrucciones para ingresar tu número de teléfono y código de verificación
- * 4. Copia la cadena generada a tu variable TELEGRAM_SESSION en .env
+ * Usage:
+ * 1. Make sure you have TELEGRAM_API_ID and TELEGRAM_API_HASH in your .env
+ *    or enter them when prompted by the script
+ * 2. Run: node scripts/generate-telegram-session.js
+ * 3. Follow the instructions to enter your phone number and verification code
+ * 4. Copy the generated string to your TELEGRAM_SESSION variable in .env
  */
 
 const { TelegramClient } = require('telegram');
@@ -17,10 +17,10 @@ const { StringSession } = require('telegram/sessions');
 const input = require('input'); // npm install input
 const dotenv = require('dotenv');
 
-// Cargar variables de entorno desde .env si existe
+// Load environment variables from .env if it exists
 dotenv.config();
 
-// Función para solicitar input si no está en variables de entorno
+// Function to request input if not in environment variables
 async function getInput(envVar, promptText) {
   if (process.env[envVar]) {
     return process.env[envVar];
@@ -30,53 +30,53 @@ async function getInput(envVar, promptText) {
 
 (async () => {
   console.log('='.repeat(50));
-  console.log('GENERADOR DE SESIÓN DE TELEGRAM PARA ORDERFLOW API');
+  console.log('TELEGRAM SESSION GENERATOR FOR ORDERFLOW API');
   console.log('='.repeat(50));
-  console.log('\nEste script generará la variable TELEGRAM_SESSION necesaria');
-  console.log('para la funcionalidad de creación automática de bots.\n');
+  console.log('\nThis script will generate the TELEGRAM_SESSION variable required');
+  console.log('for the automatic bot creation functionality.\n');
 
   try {
-    // Obtener API ID y Hash
-    const apiIdStr = await getInput('TELEGRAM_API_ID', 'Ingresa tu API ID (de my.telegram.org): ');
+    // Get API ID and Hash
+    const apiIdStr = await getInput('TELEGRAM_API_ID', 'Enter your API ID (from my.telegram.org): ');
     const apiId = parseInt(apiIdStr);
-    const apiHash = await getInput('TELEGRAM_API_HASH', 'Ingresa tu API Hash (de my.telegram.org): ');
+    const apiHash = await getInput('TELEGRAM_API_HASH', 'Enter your API Hash (from my.telegram.org): ');
 
     if (!apiId || !apiHash) {
-      console.error('Error: API ID y API Hash son obligatorios');
+      console.error('Error: API ID and API Hash are required');
       process.exit(1);
     }
 
-    console.log('\nIniciando cliente de Telegram...');
-    const stringSession = new StringSession(''); // Iniciar con sesión vacía
+    console.log('\nInitializing Telegram client...');
+    const stringSession = new StringSession(''); // Start with empty session
     const client = new TelegramClient(stringSession, apiId, apiHash, {
       connectionRetries: 5,
     });
 
-    console.log('Iniciando sesión en Telegram...');
+    console.log('Logging into Telegram...');
     await client.start({
-      phoneNumber: async () => await input.text('Número de teléfono (con código de país, ej: +573001234567): '),
-      password: async () => await input.text('Contraseña (si tienes verificación en dos pasos): '),
-      phoneCode: async () => await input.text('Código recibido en Telegram: '),
+      phoneNumber: async () => await input.text('Phone number (with country code, e.g.: +1234567890): '),
+      password: async () => await input.text('Password (if you have two-step verification): '),
+      phoneCode: async () => await input.text('Verification code received on Telegram: '),
       onError: (err) => console.log('Error:', err),
     });
 
-    // Guardar la sesión
+    // Save the session
     const sessionString = client.session.save();
-    console.log('\n='.repeat(50));
-    console.log('¡SESIÓN GENERADA EXITOSAMENTE!');
+    console.log('\n' + '='.repeat(50));
+    console.log('SESSION GENERATED SUCCESSFULLY!');
     console.log('='.repeat(50));
-    console.log('\nCopia esta cadena a tu variable TELEGRAM_SESSION en .env:');
+    console.log('\nCopy this string to your TELEGRAM_SESSION variable in .env:');
     console.log('\n' + sessionString + '\n');
-    console.log('Ejemplo para tu archivo .env:');
+    console.log('Example for your .env file:');
     console.log(`TELEGRAM_API_ID=${apiId}`);
     console.log(`TELEGRAM_API_HASH=${apiHash}`);
     console.log(`TELEGRAM_SESSION=${sessionString}`);
-    console.log('\n¡No compartas estas credenciales con nadie!');
+    console.log('\nDo not share these credentials with anyone!');
 
     await client.disconnect();
     process.exit(0);
   } catch (error) {
-    console.error('Error al generar la sesión:', error);
+    console.error('Error generating session:', error);
     process.exit(1);
   }
 })();

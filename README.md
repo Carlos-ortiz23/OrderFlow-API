@@ -28,9 +28,14 @@ The system maintains conversation context, validates stock availability in real-
 ### ✅ Recently Completed:
 - **Authentication Module**: JWT-based authentication with refresh tokens
 - **Stores Module**: Multi-store management for owners
+- **Users Module**: User management and profiles
+- **Clients Module**: Customer management for stores
+- **Categories Module**: Product categorization system
+- **Tags Module**: Product tagging system
 - **Role-Based Access Control**: Owner, admin, manager, and viewer roles
+- **Automatic Bot Creation**: Create Telegram bots automatically via BotFather API
 
-### 🚧 In Development:
+### 🚧 Future Enhancements:
 - **Admin Dashboard**: Administration panel for product and order management
 - **Payment Integration**: Payment gateway integration
 - **Analytics Module**: Sales and performance analytics
@@ -120,9 +125,9 @@ LLM_URL=https://api.deepseek.com
 # Telegram
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 
-# Telegram Bot Creation (MTProto API)
-# Obtén estas credenciales en https://my.telegram.org/apps
-# Genera la sesión con: node scripts/generate-telegram-session.js
+# Telegram Bot Creation (MTProto API) - Optional
+# Get these credentials at https://my.telegram.org/apps
+# Generate session with: node scripts/generate-telegram-session.js
 TELEGRAM_API_ID=your_api_id_here
 TELEGRAM_API_HASH=your_api_hash_here
 TELEGRAM_SESSION=your_session_string_here
@@ -205,9 +210,39 @@ Product inventory management.
 | GET | `/api/products` | Get all products (paginated) | No |
 | GET | `/api/products/:id` | Get product by ID | No |
 | GET | `/api/products/search?q=query` | Search products by name | No |
-| POST | `/api/products` | Create a new product | Yes (Admin) |
-| PUT | `/api/products/:id` | Update product | Yes (Admin) |
-| DELETE | `/api/products/:id` | Delete product | Yes (Admin) |
+| POST | `/api/products` | Create a new product | Yes (Owner) |
+| PUT | `/api/products/:id` | Update product | Yes (Owner) |
+| DELETE | `/api/products/:id` | Delete product | Yes (Owner) |
+
+### 🏷️ Categories
+Product categorization management.
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/products/categories` | Get all categories | No |
+| GET | `/api/products/categories/:id` | Get category by ID | No |
+| GET | `/api/products/categories/store/:storeId` | Get categories by store | Yes (Owner) |
+| POST | `/api/products/categories` | Create a new category | Yes (Owner) |
+| PUT | `/api/products/categories/:id` | Update category | Yes (Owner) |
+| DELETE | `/api/products/categories/:id` | Delete category | Yes (Owner) |
+| GET | `/api/products/categories/:id/products` | Get products in category | No |
+| POST | `/api/products/categories/:categoryId/products/:productId` | Add product to category | Yes (Owner) |
+| DELETE | `/api/products/categories/:categoryId/products/:productId` | Remove product from category | Yes (Owner) |
+
+### 🏷️ Tags
+Product tagging management.
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/products/tags` | Get all tags | No |
+| GET | `/api/products/tags/:id` | Get tag by ID | No |
+| GET | `/api/products/tags/store/:storeId` | Get tags by store | Yes (Owner) |
+| POST | `/api/products/tags` | Create a new tag | Yes (Owner) |
+| PUT | `/api/products/tags/:id` | Update tag | Yes (Owner) |
+| DELETE | `/api/products/tags/:id` | Delete tag | Yes (Owner) |
+| GET | `/api/products/tags/:id/products` | Get products with tag | No |
+| POST | `/api/products/tags/:tagId/products/:productId` | Add tag to product | Yes (Owner) |
+| DELETE | `/api/products/tags/:tagId/products/:productId` | Remove tag from product | Yes (Owner) |
 
 ### 🛒 Orders
 Order management and processing.
@@ -216,8 +251,9 @@ Order management and processing.
 |--------|----------|-------------|---------------|
 | GET | `/api/orders` | Get all orders (filtered) | Yes |
 | GET | `/api/orders/:id` | Get order by ID | Yes |
-| GET | `/api/orders/stats` | Get order statistics | Yes |
-| PATCH | `/api/orders/:id/status` | Update order status | Yes (Admin) |
+| GET | `/api/orders/stats` | Get order statistics | Yes (Owner) |
+| GET | `/api/orders/store/:storeId` | Get orders by store | Yes (Owner) |
+| PATCH | `/api/orders/:id/status` | Update order status | Yes (Owner) |
 
 ### 🤖 Bot
 Telegram bot webhook and bot creation endpoints.
@@ -359,9 +395,35 @@ In production, only WARN and ERROR are shown.
 ## 🧪 Testing
 
 ```bash
-# Run tests (when implemented)
+# Run integration tests
 npm test
 ```
+
+Tests are located in `src/__tests__/integration/` and cover:
+- Authentication flows
+- Health checks
+- Orders CRUD
+- Products CRUD
+- Stores CRUD
+
+## 🐳 Docker
+
+### Build and run with Docker Compose
+```bash
+docker-compose up --build
+```
+
+### Build image only
+```bash
+docker build -t orderflow-api .
+```
+
+The Docker setup includes:
+- Multi-stage build for optimized image size
+- Non-root user for security
+- Health checks
+- Automatic restart policy
+- JSON logging with rotation
 
 ## 📄 License
 
